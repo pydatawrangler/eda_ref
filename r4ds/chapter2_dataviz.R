@@ -4,6 +4,7 @@ library(palmerpenguins)
 library(ggthemes)
 
 penguins
+df <- penguins
 
 glimpse(penguins)
 View(penguins)
