@@ -140,9 +140,43 @@ new_cases_rolling_average[['Brazil', 'India', 'USA']].plot(
   ax=axes[2], style=['--', ':', '-']
 )
 ```
-Thru page 283 (289 of PDF)
 
+```{python}
+cols = [
+  col for col in new_cases_rolling_average.columns
+  if col not in [
+    'USA', 'Brazil', 'India', 'Italy & Spain'
+  ]
+]
 
+new_cases_rolling_average.assign(
+  **{'Italy & Spain': lambda x: x.Italy + x.Spain}
+).sort_index(axis=1).assign(
+  Other=lambda x: x[cols].sum(axis=1)
+).drop(columns=cols).plot(
+  kind='area', figsize=(15,5),
+  title='7-day rolling average of new '
+  'COVID-19 cases\n(source: ECDC)'
+)
+```
+
+```{python}
+fig, axes = plt.subplots(1, 3, figsize=(15,3))
+cumulative_covid_cases = covid.groupby(
+  ['countriesAndTerritories', pd.Grouper(freq='1D')]
+).cases.sum().unstack(0).apply('cumsum')
+cumulative_covid_cases[['China']]\
+  .plot(ax=axes[0], style='-.c')
+cumulative_covid_cases[['Italy', 'Spain']].plot(
+  ax=axes[1], style=['-', '--'],
+  title='Cumulative COVID-19 Cases\n(source: ECDC)'
+)
+cumulative_covid_cases[['Brazil', 'India', 'USA']]\
+  .plot(ax=axes[2], style=['--', ':', '-'])
+```
+
+### Relationship between variables
+(page 285 or 291 of PDF)
 
 For a demonstration of a line plot on a polar axis, see @fig-polar.
 
