@@ -1,0 +1,37 @@
+---
+title: "R4DS"
+subtitle: "Chapter 2"
+format: html
+---
+
+## Link to the online version of the book:
+[R for Data Science 2nd Edition](https://r4ds.hadley.nz/)
+
+```{r}
+library(tidyverse)
+library(palmerpenguins)
+library(ggthemes)
+```
+
+```{r}
+ggplot(
+    data=penguins,
+    mapping = aes(x=flipper_length_mm, y=body_mass_g)
+    ) +
+    geom_point(mapping=aes(color=species, shape=species)) +
+    geom_smooth(method="lm") +
+    labs(
+        title="Body mass and flipper length",
+        subtitle="Dimensions for Adelie, Chinstrap, and Gentoo Penguins",
+        x="Flipper length (mm)", y="Body mass (g)",
+        color="Species", shape="Species"
+    ) +
+    scale_color_colorblind()
+```
+
+```{r}
+penguins |>
+ggplot(aes(x=flipper_length_mm, y=body_mass_g)) +
+geom_point()
+```
+Stopped at Section 2.4.1
