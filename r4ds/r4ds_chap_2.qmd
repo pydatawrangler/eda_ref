@@ -34,4 +34,59 @@ penguins |>
 ggplot(aes(x=flipper_length_mm, y=body_mass_g)) +
 geom_point()
 ```
-Stopped at Section 2.4.1
+
+```{r}
+# 2.4.1 A categorical variable
+ggplot(penguins, aes(x=species)) +
+geom_bar()
+```
+
+```{r}
+ggplot(penguins, aes(x=fct_infreq(species))) +
+geom_bar()
+```
+
+```{r}
+ggplot(penguins, aes(x=body_mass_g)) + 
+geom_histogram(binwidth = 20)
+ggplot(penguins, aes(x=body_mass_g)) + 
+geom_histogram(binwidth = 2000)
+```
+
+```{r}
+ggplot(penguins, aes(x=body_mass_g)) +
+geom_density()
+```
+
+```{r}
+# 2.5.1 boxplot
+ggplot(penguins, aes(x=species, y=body_mass_g)) +
+    geom_boxplot()
+```
+
+```{r}
+ggplot(penguins, aes(x=body_mass_g, color=species, fill=species)) +
+    geom_density(alpha=0.5)
+```
+
+```{r}
+ggplot(penguins, aes(x=island, fill=species)) +
+    geom_bar()
+```
+```{r}
+ggplot(penguins, aes(x=island, fill=species)) +
+    geom_bar(position="fill")
+```
+
+```{r}
+# 2.5.4 Three or more variables 
+ggplot(penguins, aes(x=flipper_length_mm, y=body_mass_g)) +
+    geom_point(aes(color=species, shape=island))
+```
+
+```{r}
+ggplot(penguins, aes(x=flipper_length_mm, y=body_mass_g)) +
+    geom_point(aes(color=species, shape=species)) +
+    facet_wrap(~island)
+ggsave(filename = "penguin-plot.pdf")
+```
