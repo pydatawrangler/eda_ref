@@ -1,0 +1,62 @@
+---
+title: "R4DS"
+subtitle: "Chapter 4"
+format: html
+---
+
+```{r}
+library(nycflights13)
+library(tidyverse)
+```
+
+```{r}
+flights |>
+    filter(dest == "IAH") |>
+    group_by(year, month, day) |>
+    summarize(
+        arr_delay = mean(arr_delay, na.rm=TRUE)
+    )
+```
+
+```{r}
+flights %>%
+    filter(dep_delay>120)
+```
+
+```{r}
+flights |>
+    filter(month==1 | month==2)
+```
+
+```{r}
+flights |>
+    filter(month %in% c(1,2))
+```
+
+```{r}
+jan1 <- flights |>
+    filter(month==1 & day==1)
+jan1
+```
+
+```{r}
+flights |>
+    arrange(year, month, day, dep_time)
+```
+
+```{r}
+flights |>
+    arrange(desc(dep_delay))
+```
+
+```{r}
+flights |>
+    distinct(origin, dest, .keep_all = TRUE)
+```
+
+```{r}
+flights |>
+    count(origin, dest, sort=TRUE)
+```
+
+Stopped at Section 4.3 Columns
