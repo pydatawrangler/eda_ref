@@ -1,0 +1,39 @@
+---
+title: "Chapter 6 - Data tidying"
+subtitle: "R 4 Data Science"
+format: html
+---
+
+## 6.1
+
+```{r}
+library(tidyverse)
+```
+
+## 6.2 Tidy data
+
+```{r}
+table1
+table2
+table3
+```
+
+```{r}
+table1 |>
+  mutate(rate = cases / population *  10000)
+```
+
+```{r}
+table1 |>
+  group_by(year) |>
+  summarize(total_cases = sum(cases))
+```
+
+```{r}
+ggplot(table1, aes(x = year, y = cases)) +
+  geom_line(aes(group = country), color = "grey50") +
+  geom_point(aes(color = country, shape = country)) +
+  scale_x_continuous(breaks = c(1999, 2000))
+```
+
+## 6.3 Lengthening data

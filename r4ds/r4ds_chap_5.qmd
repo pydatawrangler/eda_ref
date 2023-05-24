@@ -1,0 +1,83 @@
+---
+title: "Chapter 5 - Workflow: code style"
+subtitle: R 4 Data Science
+format: html
+---
+
+
+```{r}
+library(tidyverse)
+library(nycflights13)
+```
+
+```{r}
+glimpse(flights)
+```
+## 5.1 Names
+
+```{r}
+# Strive for:
+short_flights <- flights |> filter(air_time < 60)
+```
+
+```{r}
+flights$dep_time
+```
+## 5.2 Spaces
+
+```{r}
+flights |>
+    mutate(
+    speed       = distance / air_time,
+    dep_hour    = dep_time %/% 100,
+    dep_minute  = dep_time %% 100
+    )
+```
+
+## 5.3 Pipes
+
+```{r}
+flights |>
+    filter(!is.na(arr_delay), !is.na(tailnum)) |>
+    count(dest)
+```
+
+```{r}
+flights |>
+    group_by(tailnum) |>
+    summarize(
+        delay = mean(arr_delay, na.rm = TRUE),
+        n = n()
+    )
+```
+
+## 5.4 ggplot2
+
+```{r}
+flights |>
+  group_by(month) |>
+  summarize(
+    delay = mean(arr_delay, na.rm = TRUE)
+  ) |>
+  ggplot(aes(x = month, y = delay)) +
+  geom_point() +
+  geom_line()
+```
+
+```{r}
+flights |>
+  group_by(dest) |>
+  summarize(
+    distance = mean(distance),
+    speed = mean(distance / air_time, na.rm = TRUE)
+  ) |>
+  ggplot(aes(x = distance, y = speed)) +
+  geom_smooth(
+    method = "loess",
+    span = 0.5,
+    se = FALSE,
+    color = "white",
+    linewidth = 4
+  ) +
+  geom_point()
+```
