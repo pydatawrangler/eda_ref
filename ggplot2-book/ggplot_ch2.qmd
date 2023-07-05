@@ -1,0 +1,43 @@
+---
+title: "Chapter 2 - First Steps"
+subtitle: "ggplot2 Book"
+format:
+    html:
+        self-contained: true
+---
+
+Link to book [https://ggplot2-book.org/](https://ggplot2-book.org/)
+
+```{r}
+library(ggplot2)
+library(mgcv)
+```
+
+```{r}
+ggplot(mpg, aes(x=displ, y=hwy, color=class)) +
+    geom_point()
+```
+
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+    geom_point() +
+    facet_wrap(~class)
+```
+
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+    geom_point() +
+    geom_smooth(span=0.2)
+```
+
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+    geom_point() +
+    geom_smooth(method="gam", formula=y ~ s(x))
+```
+
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+    geom_point() +
+    geom_smooth(method="lm")
+```
