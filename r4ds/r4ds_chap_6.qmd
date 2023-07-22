@@ -1,7 +1,9 @@
 ---
 title: "Chapter 6 - Data tidying"
 subtitle: "R 4 Data Science"
-format: html
+format:
+  html:
+    self-contained: true
 ---
 
 ## 6.1
@@ -37,3 +39,130 @@ ggplot(table1, aes(x = year, y = cases)) +
 ```
 
 ## 6.3 Lengthening data
+
+```{r}
+billboard_longer <- billboard |>
+  pivot_longer(
+    cols = starts_with("wk"),
+    names_to = "week",
+    values_to = "rank",
+    values_drop_na = TRUE
+  ) |>
+  mutate(
+    week = parse_number(week)
+  )
+```
+
+```{r}
+billboard_longer |>
+  ggplot(aes(x = week, y = rank, group = track)) +
+  geom_line(alpha = 0.25) +
+  scale_y_reverse()
+```
+### 6.3.2 How does pivoting work?
+
+```{r}
+df <- tribble(
+  ~id, ~bp1, ~bp2,
+  "A", 100, 120,
+  "B", 140, 115,
+  "C", 120, 125
+)
+
+df |>
+  pivot_longer(
+    cols = bp1:bp2,
+    names_to = "measurement",
+    values_to = "value"
+  )
+```
+
+### 6.3.3 Many variables in column names
+
+```{r}
+who2 |>
+  pivot_longer(
+    cols = !(country:year),
+    names_to = c("diagnosis", "gender", "age"),
+    names_sep = "_",
+    values_to = "count"
+  )
+```
+
+### 6.3.4 Data and variable names in the column headers
+
+```{r}
+household |>
+  pivot_longer(
+    cols = !family,
+    names_to = c(".value", "child"),
+    names_sep = "_",
+    values_drop_na = TRUE
+  )
+```
+
+## 6.4 Widening data
+
+```{r}
+cms_patient_experience |>
+  distinct(measure_cd, measure_title)
+
+cms_patient_experience |>
+  pivot_wider(
+    id_cols = starts_with("org"),
+    names_from = measure_cd,
+    values_from = prf_rate
+  )
+```
+
+### 6.4.1 How does `pivot_wider()` work?
+
+```{r}
+df <- tribble(
+  ~id, ~measurement, ~value,
+  "A",        "bp1",    100,
+  "B",        "bp1",    140,
+  "B",        "bp2",    115, 
+  "A",        "bp2",    120,
+  "A",        "bp3",    105
+)
+
+df |>
+  pivot_wider(
+    names_from = measurement,
+    values_from = value
+  )
+
+df |>
+  distinct(measurement) |>
+  pull()
+
+df |>
+  select(-measurement, -value) |>
+  distinct()
+
+df |>
+  select(-measurement, -value) |>
+  distinct() |>
+  mutate(x = NA, y = NA, z = NA)
+
+df2 <- tribble(
+  ~id, ~measurement, ~value,
+  "A",        "bp1",    100,
+  "A",        "bp1",    102,
+  "A",        "bp2",    120,
+  "B",        "bp1",    140, 
+  "B",        "bp2",    115
+)
+
+df2 |>
+  pivot_wider(
+    names_from = measurement,
+    values_from = value
+  )
+
+df2 |>
+  group_by(id, measurement) |>
+  summarize(n = n(), .groups = "drop") |>
+  filter(n > 1)
+```
