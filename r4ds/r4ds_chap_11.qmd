@@ -1,0 +1,78 @@
+---
+title: "Chapter 11 - Exploratory Data Analysis"
+author: "Tom Madsen"
+format:
+  html: 
+    self-contained: true 
+---
+
+## 11.1 Introduction
+
+## 11.2 Questions
+
+## 11.3 Variation
+```{r}
+library(tidyverse)
+
+ggplot(diamonds, aes(x = carat)) +
+  geom_histogram(binwidth = 0.5)
+
+smaller <- diamonds |>
+  filter(carat < 3)
+
+ggplot(smaller, aes(x = carat)) +
+  geom_histogram(binwidth = 0.01)
+
+ggplot(diamonds, aes(x = y)) +
+  geom_histogram(binwidth = 0.5) +
+  coord_cartesian(ylim = c(0, 50))
+
+unusual <- diamonds |>
+  filter(y < 3 | y > 20) |>
+  select(price, x, y, z) |>
+  arrange(y)
+unusual
+
+ggplot(diamonds, aes(x = price)) +
+  geom_histogram(binwidth = 100) +
+  coord_cartesian(xlim = c(0, 1000))
+```
+## 11.4 Unusual values
+```{r}
+diamonds2 <- diamonds |>
+  mutate(y = if_else(y < 3 | y > 20, NA, y))
+
+ggplot(diamonds2, aes(x = x, y = y)) +
+  geom_point(na.rm = TRUE)
+
+nycflights13::flights |>
+  mutate(
+    cancelled = is.na(dep_time),
+    sched_hour = sched_dep_time %/% 100,
+    sched_min = sched_dep_time %% 100,
+    sched_dep_time = sched_hour + (sched_min /60)
+  ) |>
+  ggplot(aes(x = sched_dep_time)) +
+  geom_freqpoly(aes(color = cancelled))
+
+flights <- nycflights13::flights
+flights$sched_dep_time %% 100
+?geom_freqpoly
+```
+## 11.5 Covariation
+```{r}
+ggplot(diamonds, aes(x = price, y = after_stat(density))) +
+  geom_freqpoly(aes(color = cut), binwidth = 500, linewidth = 0.75)
+
+ggplot(diamonds, aes(x = cut, y = price)) +
+  geom_boxplot()
+
+ggplot(mpg, aes(x = fct_reorder(class, hwy, median), y = hwy)) +
+  geom_boxplot() +
+  coord_flip()
+
+library(ggridges)
+ggplot(diamonds, aes(x = carat, y = price, color = cut)) +
+  geom_point()
+```
+### 11.5.2 Two categorical variables
