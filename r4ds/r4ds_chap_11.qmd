@@ -76,3 +76,67 @@ ggplot(diamonds, aes(x = carat, y = price, color = cut)) +
   geom_point()
 ```
 ### 11.5.2 Two categorical variables
+
+```{r}
+ggplot(diamonds, aes(x=cut, y=color)) +
+  geom_count()
+
+diamonds |>
+  count(color, cut) |>
+  ggplot(aes(x=color, y=cut)) +
+  geom_tile(aes(fill=n))
+```
+
+### 11.5.3 Two numerical variables
+
+```{r}
+ggplot(smaller, aes(x=carat, y=price)) +
+  geom_point(alpha=1/100)
+```
+
+```{r}
+ggplot(smaller, aes(x=carat, y=price)) +
+  geom_bin2d()
+
+ggplot(smaller, aes(x=carat, y=price)) +
+  geom_hex()
+
+ggplot(smaller, aes(x=carat, y=price)) +
+  geom_boxplot(aes(group = cut_width(carat, 0.5)))
+```
+## 11.6 Pattern and models
+
+```{r}
+library(tidymodels)
+```
+
+```{r}
+diamonds <- diamonds |> 
+  mutate(
+    log_price = log(price),
+    log_carat = log(carat)
+  )
+
+diamonds_fit <- linear_reg() |> 
+  fit(log_price ~ log_carat, data=diamonds)
+
+diamonds_aug <- augment(diamonds_fit, new_data = diamonds) |> 
+  mutate(.resid = exp(.resid))
+
+ggplot(diamonds_aug, aes(x=carat, y=.resid)) +
+  geom_point()
+```
+
+```{r}
+ggplot(diamonds_aug, aes(x=cut, y=.resid)) +
+  geom_boxplot()
+```
+
+
+
+
+
+
+
+
+
