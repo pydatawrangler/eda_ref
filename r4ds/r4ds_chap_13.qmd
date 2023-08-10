@@ -88,8 +88,37 @@ flights |>
 
 ## 13.3 Boolean algebra
 
+### 13.3.1 Missing values
+```{r}
+df <- tibble(x = c(TRUE, FALSE, NA))
 
+df |>
+  mutate(
+    and = x & NA,
+    or = x | NA
+  )
+```
 
+### 13.3.2 Order of operations
+
+```{r}
+flights |>
+  filter(month == 11 | month == 12)
+
+flights |>
+  mutate(
+    nov = month == 11,
+    final = nov | 12,
+    .keep = "used"
+  ) |>
+  filter(nov == TRUE)
+```
+
+### 13.3.3 `%in%`
+
+```{r}
+
+```
 
 
 
