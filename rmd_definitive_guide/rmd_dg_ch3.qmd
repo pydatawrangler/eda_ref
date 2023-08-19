@@ -1,0 +1,52 @@
+---
+title: "Chapter 3 - Documents"
+subtitle: "R Markdown: The Definitive Guide"
+author: "Tom Madsen"
+date: "2023-08-18"
+format:
+    html:  
+        self-contained: true
+        toc: true
+        number-sections: true
+        toc-depth: 3
+        toc-float: true
+        theme: lumen
+        highlight-style: tango
+        df-print: paged
+        code-fold: true
+---
+
+Link to book [https://bookdown.org/yihui/rmarkdown/](https://bookdown.org/yihui/rmarkdown/)
+
+# Section 1
+
+## Subsection 1.1
+
+## Subsection 1.2
+
+# Section 2
+
+## Quarterly Results 
+
+::: {.panel-tabset}
+
+### By Product
+
+(tab content)
+
+### By Region
+
+(tab content)
+
+:::
+
+```{r echo=FALSE, output=FALSE}
+library(tidyverse)
+```
+
+```{r}
+mtcars |>
+    filter(mpg > 25)
+```
+
+## 3.3 PDF document

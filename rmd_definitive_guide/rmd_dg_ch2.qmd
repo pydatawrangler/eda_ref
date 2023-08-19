@@ -1,0 +1,136 @@
+---
+title: "Chapter 2"
+subtitle: "R Markdown: The Definitive Guide"
+author: "Tom Madsen"
+date: "2023-08-17"
+format:
+    html:  
+        self-contained: true
+        toc: true
+        toc_depth: 2
+        dev: svg
+        theme: lumen
+        # include-in-header: header.html
+        # include-before-body: before.html
+server: shiny
+---
+
+Link to book [https://bookdown.org/yihui/rmarkdown/](https://bookdown.org/yihui/rmarkdown/)
+
+This is a paragraph in an R Markdown document.
+
+Below is a code chunk:
+
+```{r}
+fit = lm(dist ~ speed, data = cars)
+b = coef(fit)
+plot(cars)
+abline(fit)
+```
+
+```{r}
+knitr::kable(iris[1:5, ], caption = 'A caption')
+```
+The slope of the regression is `r b[2]`.
+
+### 2.5.1 Inline formatting
+
+**Bold** text.
+
+using subscripts example: H~3~PO~4~
+
+using superscripts example: Cu^2+^
+
+Refer to the footnote^[This is a footnote]
+
+> "I thoroughly disapprove of duels. If a man should challenge me, I would take him kindly and forgivingly by the hand and lead him to a quiet place and kill him."
+>
+> --- Mark Twain
+
+
+
+
+In R, the character
+# indicates a comment
+
+The result of 5
+- 3 is 2.
+
+### 2.5.3 Math expressions
+
+$$
+P(E) = {n \choose k} p^k (2-p)^{n-k}
+$$
+
+```{python}
+import sys
+print(sys.version)
+import matplotlib.pyplot as plt
+plt.plot([0,2,1,4])
+plt.show()
+x = 'This is an example in python'
+y = 10
+```
+
+
+```{bash}
+echo "Hello Bash!"
+ls
+```
+
+### 2.7.5 Stan
+
+
+
+## 2.8 Interactive documents
+
+Below is a map that shows the location of the Department of Statistics, Iowa State University.
+
+```{r out.width='100%', echo=FALSE}
+library(leaflet)
+leaflet() |>
+  addTiles() |>
+  setView(-93.65, 42.0285, zoom = 17) |>
+  addPopups(
+    -93.65, 42.0285,
+    'Here is the <b>Department of Statistics</b>, ISU'
+  )
+```
+
+Below is a map that shows location of the SIAD
+
+```{r out.width='100%', echo=FALSE}
+library(leaflet)
+leaflet() |>
+  addTiles() |>
+  setView(-112.5418, 40.8884, zoom = 17) |>
+  addPopups(
+    -112.5418, 40.8884,
+    'Here is the <b>SIAD</b>, Toole County'
+  )
+```
+
+### 2.8.2 Shiny documents
+
+A standard R plot can be made interactive by wrapping it in the Shiny `renderPlot()` function.  The `selectInput()` function creates the input widget to drive the plot.
+
+---
+title: "Old Faithful"
+format: html
+server: shiny
+---
+
+```{r}
+selectInput("bins", "Number of bins:", 
+           choices = c(10, 20, 35, 50), selected = 20)
+plotOutput("distPlot")
+```
+
+```{r}
+#| context: server
+output$distPlot <- renderPlot({
+  x <- faithful[, 2]  # Old Faithful Geyser data
+  bins <- seq(min(x), max(x), length.out = as.numeric(input$bins) + 1)
+  hist(x, breaks = bins, col = 'darkgray', border = 'white')
+})
+```
