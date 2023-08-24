@@ -117,10 +117,41 @@ flights |>
 ### 13.3.3 `%in%`
 
 ```{r}
+1:12 %in% c(1, 5, 11)
+letters[1:10] %in% c("a", "e", "i", "o", "u")
 
+flights |>
+  filter(month %in% c(11, 12))
+
+flights |>
+  filter(dep_time %in% c(NA, 0800))
 ```
 
+## 13.4 Summaries
 
+### 13.4.1 Logical summaries
+
+```{r}
+flights |>
+  group_by(year, month, day) |>
+  summarize(
+    all_delayed = all(dep_delay <= 60, na.rm = TRUE),
+    any_long_delay = any(arr_delay >= 300, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+```{r}
+flights |>
+  group_by(year, month, day) |>
+  summarize(
+    all_delayed = mean(dep_delay <= 60, na.rm = TRUE),
+    any_long_delay = sum(arr_delay >= 300, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+### 13.4.3 Logical subsetting
 
 
 
