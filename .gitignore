@@ -3,3 +3,7 @@
 */tmp
 .Rproj.user
 .DS_Store
+.ipynb_checkpoints
+.vscode
+*.zip
+data/GSS_stata
