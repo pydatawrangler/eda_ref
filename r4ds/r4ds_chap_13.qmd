@@ -153,9 +153,62 @@ flights |>
 
 ### 13.4.3 Logical subsetting
 
+```{r}
+flights |>
+  filter(arr_delay > 0) |>
+  group_by(year, month, day) |>
+  summarize(
+    behind = mean(arr_delay),
+    n = n(),
+    .groups = "drop"
+  )
+```
+
+```{r}
+flights |>
+  group_by(year, month, day) |>
+  summarize(
+    behind = mean(arr_delay[arr_delay > 0], na.rm = TRUE),
+    ahead = mean(arr_delay[arr_delay < 0], na.rm = TRUE),
+    n = n(),
+    .groups = "drop"
+  )
+```
 
 
+## Conditional transformations
 
+### 13.5.1 `if_else()`
 
+```{r}
+x <- c(-3:3, NA)
+if_else(x > 0, "+ve", "-ve", "???")
+```
 
+### 13.5.2 `case_when()`
+
+```{r}
+x <- c(-3:3, NA)
+case_when(
+  x == 0 ~ "0",
+  x < 0 ~ "-ve",
+  x > 0 ~ "+ve",
+  is.na(x) ~ "???"
+)
+```
+
+```{r}
+flights |>
+  mutate(
+    status = case_when(
+      is.na(arr_delay) ~ "cancelled",
+      arr_delay < -30 ~ "very early",
+      arr_delay < -15 ~ "early",
+      abs(arr_delay) <= 15 ~ "on time",
+      arr_delay < 60 ~ "late",
+      arr_delay < Inf ~ "very late"
+    ),
+    .keep = "used"
+  )
+```
 

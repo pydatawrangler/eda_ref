@@ -1,0 +1,31 @@
+---
+title: "Chapter 14 - Numbers"
+subtitle: "R for Data Science"
+format: 
+    html: 
+        self-contained: true
+---
+
+## 14.1 Introduction
+
+```{r}
+library(tidyverse)
+library(nycflights13)
+```
+
+## 14.2 Making numbers
+
+```{r}
+x <- c("$1,234", "USD 3,513", "59%")
+parse_number(x)
+```
+
+## 14.3 Counts
+
+```{r}
+flights |> count(dest, sort = TRUE) |> View()
+```
+
+```{r}
+flights |> count(tailnum, wt = distance, sort = TRUE)
+```
