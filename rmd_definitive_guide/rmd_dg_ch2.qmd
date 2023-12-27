@@ -12,7 +12,6 @@ format:
         theme: lumen
         # include-in-header: header.html
         # include-before-body: before.html
-server: shiny
 ---
 
 Link to book [https://bookdown.org/yihui/rmarkdown/](https://bookdown.org/yihui/rmarkdown/)
@@ -108,29 +107,4 @@ leaflet() |>
     -112.5418, 40.8884,
     'Here is the <b>SIAD</b>, Toole County'
   )
-```
-
-### 2.8.2 Shiny documents
-
-A standard R plot can be made interactive by wrapping it in the Shiny `renderPlot()` function.  The `selectInput()` function creates the input widget to drive the plot.
-
----
-title: "Old Faithful"
-format: html
-server: shiny
----
-
-```{r}
-selectInput("bins", "Number of bins:", 
-           choices = c(10, 20, 35, 50), selected = 20)
-plotOutput("distPlot")
-```
-
-```{r}
-#| context: server
-output$distPlot <- renderPlot({
-  x <- faithful[, 2]  # Old Faithful Geyser data
-  bins <- seq(min(x), max(x), length.out = as.numeric(input$bins) + 1)
-  hist(x, breaks = bins, col = 'darkgray', border = 'white')
-})
 ```

@@ -1,0 +1,131 @@
+---
+title: Chapter 2 - Essential DataFrame Operations
+format:
+  html:
+    self-contained: true
+jupyter: python3
+---
+
+```{python}
+import pandas as pd
+```
+
+```{python}
+movies = pd.read_csv("https://raw.githubusercontent.com/PacktPublishing/Pandas-Cookbook-Second-Edition/master/data/movie.csv")
+```
+
+```{python}
+def shorten(col):
+    return(
+        str(col)
+        .replace("facebook_likes", "fb")
+        .replace("_for_reviews", "")
+    )
+```
+
+```{python}
+movies_shortened = movies.rename(columns=shorten)
+```
+
+```{python}
+movies_shortened
+```
+
+```{python}
+movies.dtypes.value_counts()
+```
+
+```{python}
+movies_shortened.select_dtypes(include="int").head()
+```
+
+```{python}
+movies_shortened.select_dtypes(include="number").head()
+```
+
+```{python}
+movies_shortened.select_dtypes(include=["int", "object"]).head()
+```
+
+```{python}
+movies_shortened.filter(like="fb").head()
+```
+
+```{python}
+movies_shortened.filter(regex=r"\d").head()
+```
+
+```{python}
+movies.shape
+```
+
+```{python}
+movies.size
+```
+
+```{python}
+movies.ndim
+```
+
+```{python}
+len(movies)
+```
+
+```{python}
+movies.count()
+```
+
+```{python}
+movies.select_dtypes(exclude="object").min()
+```
+
+```{python}
+movies.describe().T
+```
+
+```{python}
+movies.describe(percentiles=[0.01, 0.3, 0.99]).T
+```
+
+```{python}
+movies.head().T
+```
+
+```{python}
+movies.select_dtypes(["object"]).fillna("").max()
+```
+
+```{python}
+colleges = pd.read_csv("https://raw.githubusercontent.com/PacktPublishing/Pandas-Cookbook-Second-Edition/master/data/college.csv",
+                       index_col="INSTNM")
+colleges
+```
+
+```{python}
+colleges_ugds = colleges.filter(like="UGDS_")
+colleges_ugds.head()
+```
+
+```{python}
+name = "Northwest-Shoals Community College"
+colleges_ugds.loc[name]
+```
+
+```{python}
+colleges_ugds.loc[name].round(2)
+```
+
+```{python}
+(colleges_ugds + 0.00501)//0.01
+```
+
+```{python}
+colleges_ugds.count(axis="columns").head()
+
+colleges_ugds.sum(axis="columns").head()
+
+colleges_ugds.median(axis="index")
+```
+
+Page 74 (page 95 of 627 of PDF)
+

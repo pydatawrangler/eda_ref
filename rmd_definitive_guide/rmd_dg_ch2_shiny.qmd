@@ -1,0 +1,28 @@
+---
+title: "Old Faithful"
+format: 
+  html:
+    self-contained: true
+server: shiny
+---
+
+### 2.8.2 Shiny documents
+
+A standard R plot can be made interactive by wrapping it in the Shiny `renderPlot()` function.  The `selectInput()` function creates the input widget to drive the plot.
+
+
+
+```{r}
+selectInput("bins", "Number of bins:", 
+           choices = c(10, 20, 35, 50), selected = 20)
+plotOutput("distPlot")
+```
+
+```{r}
+#| context: server
+output$distPlot <- renderPlot({
+  x <- faithful[, 2]  # Old Faithful Geyser data
+  bins <- seq(min(x), max(x), length.out = as.numeric(input$bins) + 1)
+  hist(x, breaks = bins, col = 'darkgray', border = 'white')
+})
+```

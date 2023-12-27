@@ -1,0 +1,60 @@
+---
+title: "Chapter 13 - Numbers"
+subtitle: "R for Data Science"
+format: 
+    html: 
+        self-contained: true
+---
+
+## 13.1 Introduction
+
+```{r}
+library(tidyverse)
+library(nycflights13)
+```
+
+## 13.2 Making numbers
+
+```{r}
+x <- c("$1,234", "USD 3,513", "59%")
+parse_number(x)
+```
+
+## 13.3 Counts
+
+```{r}
+flights |> count(dest, sort = TRUE) |> View()
+```
+
+```{r}
+flights |> count(tailnum, wt = distance, sort = TRUE)
+```
+
+```{r}
+flights |>
+    group_by(dest) |>
+    summarize(
+        n = n(),
+        delay = mean(arr_delay, na.rm = TRUE)
+    )
+```
+
+```{r}
+flights |>
+    group_by(dest) |>
+    summarize(carriers = n_distinct(carrier)) |>
+    arrange(desc(carriers))
+```
+
+```{r}
+flights |>
+    group_by(tailnum) |>
+    summarize(miles = sum(distance))
+```
+
+```{r}
+flights |>
+    group_by(dest) |>
+    summarize(n_cancelled = sum(is.na(dep_time)))
+```
+## 13.4 Numeric transformations

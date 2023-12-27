@@ -1,0 +1,212 @@
+---
+title: "Chap 5 - EDA"
+format: 
+    html:
+        self-contained: true
+---
+
+## Imports
+
+```{python}
+import pandas as pd 
+import numpy as np 
+import matplotlib.pyplot as plt 
+import seaborn as sns
+from scipy import stats
+pd.set_option('display.max_columns', 50)
+```
+## Load the Dataset
+
+```{python}
+file_url = "data/vehicles.csv.zip"
+fueleco = pd.read_csv(file_url)
+fueleco
+```
+
+```{python}
+fueleco.select_dtypes(exclude="object").mean()
+fueleco.select_dtypes(exclude="object").std()
+fueleco.select_dtypes(exclude="object").info()
+fueleco.select_dtypes(exclude=["object", "bool"]).quantile(
+    [0, 0.25, 0.5, 0.75, 1]
+)
+fueleco.select_dtypes(exclude=["object", "bool"]).describe().T
+fueleco.describe(include=object)
+```
+## Column Types
+
+```{python}
+fueleco.dtypes.value_counts()
+fueleco.select_dtypes(include="bool")
+```
+
+```{python}
+fueleco.select_dtypes("int64").describe().T
+```
+
+```{python}
+np.iinfo(np.int16)
+fueleco[["city08", "comb08"]].info(memory_usage="deep")
+```
+
+```{python}
+(
+    fueleco[["city08", "comb08"]]
+    .assign(
+        city08=fueleco.city08.astype(np.int16),
+        comb08=fueleco.comb08.astype(np.int16),
+    )
+    .info(memory_usage="deep")
+)
+```
+
+```{python}
+fueleco[["make"]].info(memory_usage="deep")
+```
+
+```{python}
+(
+    fueleco[["make"]]
+    .assign(make=fueleco.make.astype("category"))
+    .info(memory_usage="deep")
+)
+```
+## Categorical data
+```{python}
+fueleco.select_dtypes(object).columns
+fueleco.drive.nunique()
+fueleco.drive.sample(5, random_state=42)
+fueleco.drive.isna().mean() * 100
+fueleco.drive.value_counts(dropna=False)
+```
+
+```{python}
+top_n = fueleco.make.value_counts().index[:6]
+(
+    fueleco
+    .assign(
+        make=fueleco.make.where(
+            fueleco.make.isin(top_n), "Other"
+        )
+    )
+).make.value_counts(dropna=False)
+```
+
+```{python}
+fig, ax = plt.subplots(figsize=(10, 8))
+top_n = fueleco.make.value_counts().index[:6]
+(
+    fueleco
+    .assign(
+        make=fueleco.make.where(
+            fueleco.make.isin(top_n), "Other"
+        )
+    )
+    .make.value_counts(dropna=False)
+    .plot.bar(ax=ax)
+)
+fig.savefig("c5-catpan.png", dpi=300)
+```
+
+```{python}
+fig, ax = plt.subplots(figsize=(10,8))
+top_n = fueleco.make.value_counts().index[:6]
+sns.countplot(
+    y="make",
+    data=(
+        fueleco
+        .assign(make=fueleco.make.where(fueleco.make.isin(top_n), "Other"))
+    )
+)
+fig.savefig("c5-catsns.png", dpi=300)
+```
+
+
+```{python}
+fueleco.rangeA.value_counts()
+```
+
+```{python}
+fueleco.rangeA
+(
+    fueleco.rangeA.str.extract(r"([^0-9.])")
+    .dropna()
+    .apply(lambda row: "".join(row), axis=1)
+    .value_counts()
+)
+```
+
+```{python}
+set(fueleco.rangeA.apply(type))
+fueleco.rangeA.isna().sum()
+```
+
+```{python}
+(
+    fueleco.rangeA
+    .fillna("0")
+    .str.replace("-", "/")
+    .str.split("/", expand=True)
+    .astype(float)
+    .mean(axis=1)
+    .pipe(lambda ser_: pd.cut(ser_, 10))
+    .value_counts()
+    # .pipe(lambda s_: s_.where(s_< 100))
+    # .dropna()
+    # .sort_values()
+)
+```
+## Continuous Data
+
+```{python}
+fueleco.select_dtypes("number")
+fueleco.city08.sample(5, random_state=42)
+fueleco.city08.isna().sum()
+fueleco.city08.describe()
+```
+
+```{python}
+fig, ax = plt.subplots(figsize=(10,8))
+fueleco.city08.hist(ax=ax, bins=30)
+fig.savefig(
+    "c5-conthistpan.png",
+    dpi=300
+)
+```
+
+```{python}
+fig, ax = plt.subplots(figsize=(10,8))
+sns.distplot(fueleco.city08, rug=True, ax=ax)
+fig.savefig(
+    "c5-conthistsns.png",
+    dpi=300
+)
+```
+
+```{python}
+fig, axs = plt.subplots(nrows=3, figsize=(10,8))
+sns.boxplot(x=fueleco.city08, ax=axs[0])
+sns.violinplot(x=fueleco.city08, ax=axs[1])
+sns.boxenplot(x=fueleco.city08, ax=axs[2])
+fig.savefig(
+    "c5-contothersns.png",
+    dpi=300
+)
+```
+
+
+```{python}
+stats.kstest(fueleco.city08, cdf="norm")
+```
+
+
+```{python}
+fig, ax = plt.subplots(figsize=(10, 8))
+stats.probplot(fueleco.city08, plot=ax)
+fig.savefig(
+    "c5-conprob.png",
+    dpi=300
+)
+```
+
+## Comparing continuous values across categories

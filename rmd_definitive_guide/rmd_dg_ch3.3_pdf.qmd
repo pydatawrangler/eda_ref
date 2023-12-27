@@ -1,0 +1,29 @@
+---
+title: "Habits"
+author: Tom Madsen
+date: December 17, 2023
+format: 
+    pdf:
+        toc: true
+        toc-depth: 2
+        number-sections: true
+        fig-caption: true
+        df-print: kable
+        highlight-style: tango
+---
+
+This is a test document in PDF.
+
+
+```{r echo=FALSE, output=FALSE}
+library(tidyverse)
+library(knitr)
+```
+
+```{r}
+mtcars[1:5, ] |>
+    filter(mpg > 22)
+```
+```{r tables-mtcars}
+knitr::kable(iris[1:5,], caption = 'A caption')
+```

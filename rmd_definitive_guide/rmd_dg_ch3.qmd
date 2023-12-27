@@ -9,7 +9,8 @@ format:
         toc: true
         number-sections: true
         toc-depth: 3
-        toc-float: true
+        toc-float: 
+            toc_float: false
         theme: lumen
         highlight-style: tango
         df-print: paged
@@ -18,23 +19,23 @@ format:
 
 Link to book [https://bookdown.org/yihui/rmarkdown/](https://bookdown.org/yihui/rmarkdown/)
 
-# Section 1
+## Section 1
 
-## Subsection 1.1
+### Subsection 1.1
 
-## Subsection 1.2
+### Subsection 1.2
 
-# Section 2
+## Section 2
 
-## Quarterly Results 
+### Quarterly Results 
 
 ::: {.panel-tabset}
 
-### By Product
+#### By Product
 
 (tab content)
 
-### By Region
+#### By Region
 
 (tab content)
 
@@ -49,4 +50,3 @@ mtcars |>
     filter(mpg > 25)
 ```
 
-## 3.3 PDF document
