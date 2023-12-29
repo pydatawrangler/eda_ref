@@ -1,0 +1,23 @@
+---
+title: "Notes"
+subtitle: "Tidy Modeling with R"
+author: Tom Madsen
+format: 
+    html:
+        self-contained: true
+---
+
+---
+
+This is the first document with notes and references for the resources for TMWR.
+
+## Book Link
+[Tidy Modeling with R](https://www.tmwr.org/)
+
+## Github Repo
+[https://github.com/tidymodels/TMwR/tree/main](https://github.com/tidymodels/TMwR/tree/main)
+
+
+
+
+

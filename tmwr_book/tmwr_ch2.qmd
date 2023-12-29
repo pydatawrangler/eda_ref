@@ -1,0 +1,24 @@
+---
+title: "Chapter 2 - A Tidyverse Primer"
+subtitle: "Tidy Modeling with R"
+author: Tom Madsen
+date: December 29, 2023
+format:
+    html:
+        self-contained: true
+---
+
+---
+
+## 2.1 TIDYVERSE PRINCIPLES
+
+```{r}
+mtcars[order(mtcars$gear, mtcars$mpg), ]
+```
+
+```{r}
+library(dplyr)
+arrange(.data = mtcars, gear, mpg)
+```
+
+### 2.1.2 Reuse Existing Data Structures
