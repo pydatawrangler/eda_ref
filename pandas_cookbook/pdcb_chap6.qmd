@@ -1,0 +1,82 @@
+---
+title: "Selecting Subsets of Data"
+subtitle: "Pandas Cookbook"
+author: Tom Madsen
+date: December 30, 2023
+format: 
+    html:
+        self-contained: true    
+---
+
+## Selecting Series Data
+
+```{python}
+import pandas as pd 
+import numpy as np
+```
+
+```{python}
+file_url = "https://raw.githubusercontent.com/PacktPublishing/Pandas-Cookbook-Second-Edition/master/data/college.csv"
+college = pd.read_csv(file_url, index_col="INSTNM")
+```
+
+```{python}
+city = college["CITY"]
+city
+
+city.loc["Alabama A & M University"]
+
+alabama_mask = city.isin(["Birmingham", "Montgomery"])
+city[alabama_mask]
+```
+
+## Selecting DataFrame rows
+
+```{python}
+college.sample(5, random_state=42)
+
+college.iloc[60]
+
+college.loc["University of Alaska Anchorage"]
+
+college.iloc[[60, 99, 3]]
+```
+
+## Selecting DataFrame rows and columns simultaneously
+
+```{python}
+college.iloc[:3, :4]
+```
+
+```{python}
+college.loc[:, ["WOMENONLY", "SATVRMID"]].head()
+```
+
+## Selecting data with both integers and labels
+
+```{python}
+col_start = college.columns.get_loc("UGDS_WHITE")
+col_end = college.columns.get_loc("UGDS_UNKN") + 1
+col_start, col_end
+
+college.iloc[:5, col_start:col_end]
+```
+
+```{python}
+row_start = college.index[10]
+row_end = college.index[15]
+row_start, row_end
+
+college.loc[row_start:row_end, "UGDS_WHITE":"UGDS_UNKN"]
+```
+
+## Slicing lexicographically
+
+```{python}
+college = college.sort_index()
+college.head()
+
+college.loc["Sp":"Su"]
+
+college.index.is_monotonic_increasing
+```
