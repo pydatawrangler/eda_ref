@@ -1,0 +1,93 @@
+---
+title: Introduction to Polars
+subtitle: Practical Business Python
+date: 'January 14, 2024'
+format:
+  html:
+    self-contained: true
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .qmd
+      format_name: quarto
+      format_version: '1.0'
+      jupytext_version: 1.15.1
+  kernelspec:
+    display_name: 'Python [conda env:eda]'
+    language: python
+    name: conda-env-eda-py
+---
+
+Link to online article: <https://pbpython.com/polars-intro.html>
+
+```{python}
+import polars as pl
+```
+
+```{python}
+datafile_url = "2018_Sales_Total_v2.xlsx"
+```
+
+```{python}
+df = pl.read_excel(
+    source=datafile_url, schema_overrides={"date": pl.Datetime}
+)
+```
+
+```{python}
+df.schema
+```
+
+```{python}
+df.head()
+```
+
+```{python}
+df.describe()
+```
+
+```{python}
+df.select(pl.col("name", "quantity", "sku"))
+```
+
+```{python}
+df.filter(pl.col("quantity") > 50)
+```
+
+```{python}
+df.with_columns(
+    (pl.col("date").dt.strftime("%b").alias("month_name"))
+)
+```
+
+```{python}
+df.with_columns(
+    (pl.col("quantity") / pl.col("quantity").sum()).alias("pct_total")
+)
+```
+
+```{python}
+df.with_columns(
+    pl.col("sku").str.starts_with("S").alias("special")
+)
+```
+
+```{python}
+df.with_columns(
+    pl.when(pl.col("sku").str.starts_with("S"))
+    .then(pl.lit("Special"))
+    .otherwise(pl.col("sku"))
+    .alias("sales_status")
+)
+```
+
+```{python}
+df.group_by("name", "sku").agg(pl.col("quantity").sum().alias("qty_total"))
+```
+
+```{python}
+df.sort(by="date").group_by_dynamic("date", every="1mo").agg(
+    pl.col("quantity").sum().alias("qty-total-month")
+)
+```
+
