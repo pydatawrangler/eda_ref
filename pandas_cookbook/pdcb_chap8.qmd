@@ -1,0 +1,49 @@
+---
+title: "Chapter 8 - Index Alignment"
+subtitle: "Pandas Cookbook"
+author: Tom Madsen
+date: March 13, 2024
+format:
+    html:
+        self-contained: true 
+---
+
+]
+Github Repo:  https://github.com/PacktPublishing/Pandas-Cookbook-Second-Edition/tree/master
+
+## Examining the Index object
+
+```{python}
+import pandas as pd
+import numpy as np
+```
+
+```{python}
+file_url = "https://raw.githubusercontent.com/PacktPublishing/Pandas-Cookbook-Second-Edition/master/data/college.csv"
+
+college = pd.read_csv(file_url)
+columns = college.columns
+columns.values
+
+columns[5]
+
+columns[[1, 8, 10]]
+
+columns[-7:-4]
+
+columns.min(), columns.max(), columns.isnull().sum()
+
+columns + "_A"
+
+columns > "G"
+
+c1 = columns[:4]
+c1
+
+c2 = columns[2:6]
+c2
+
+c1.union(c2)
+
+c1.symmetric_difference(c2)
+```
