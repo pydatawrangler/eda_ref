@@ -1,0 +1,127 @@
+---
+title: Modern Polars
+format:
+  html:
+    self-contained: true
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .qmd
+      format_name: quarto
+      format_version: '1.0'
+      jupytext_version: 1.15.1
+  kernelspec:
+    display_name: 'Python [conda env:eda]'
+    language: python
+    name: conda-env-eda-py
+---
+
+Link to article:
+
+https://kevinheavey.github.io/modern-polars/
+
+```{python}
+from pathlib import Path
+from zipfile import ZipFile
+import requests
+```
+
+```{python}
+data_dir = Path("data")
+dest = data_dir / "flights.csv.zip"
+```
+
+```{python}
+if not dest.exists():
+    r = requests.get(
+"https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2022_1.zip",
+        verify=False,
+        stream=True
+    )
+
+    data_dir.mkdir(exist_ok=True)
+    with dest.open("wb") as f:
+        for chunk in r.iter_content(chunk_size=102400):
+            if chunk:
+                f.write(chunk)
+
+    with ZipFile(dest) as zf:
+        zf.extract(zf.filelist[0].filename, path=data_dir)
+```
+
+# Indexing (Or Lack Thereof)
+
+## Read the data
+
+```{python}
+extracted = data_dir / "On_Time_Reporting_Carrier_On_Time_Performance_(1987_present)_2022_1.csv"
+```
+
+```{python}
+import polars as pl
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+pl.Config.set_tbl_rows(5)
+pd.options.display.max_rows = 5
+```
+
+```{python}
+df_pl = pl.read_csv(extracted, truncate_ragged_lines=True)
+df_pl
+```
+
+## Rows by number, columns by name
+
+```{python}
+df_pl.select(["Dest", "Tail_Number"]).head(16).tail(4)
+```
+
+```{python}
+df_pl.select(pl.col(["Dest", "Tail_Number"]).gather(list(range(12, 16))))
+```
+
+## Rows by string index, columns by name
+
+```{python}
+(
+    df_pl
+    .filter(pl.col("IATA_CODE_Reporting_Airline").is_in(['AA', 'DL']))
+    .select(["IATA_CODE_Reporting_Airline", "Dest", "Tail_Number"])
+)
+```
+
+```{python}
+#| jupyter: {outputs_hidden: true}
+df_pl.columns
+```
+
+## Add or overwrite columns
+
+```{python}
+f = pl.DataFrame({'a': [1,2,3,4,5], 'b': [10,20,30,40,50]})
+f
+```
+
+```{python}
+f.with_columns(
+    pl.when(pl.col("a") <=3)
+    .then(pl.col("b") // 10)
+    .otherwise(pl.col("b"))
+)
+```
+
+# Method Chaining
+
+## Extract city names
+
+```{python}
+def extract_city_name_pl() -> pl.Expr:
+    """
+    Chicago, IL -> Chicago for OriginCityName and DestCityName
+    """
+    cols = ["OriginCityName", "DestCityName"]
+    return pl.col(cols).str.split(",").list.get(0)
+```
+

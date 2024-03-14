@@ -91,3 +91,65 @@ df.sort(by="date").group_by_dynamic("date", every="1mo").agg(
 )
 ```
 
+```{python}
+(
+    df
+    .sort(by="date")
+    .group_by_dynamic("date", every="1mo")
+    .agg(
+        pl
+        .col("quantity")
+        .sum()
+        .alias("qty-total-month")
+    )
+    .with_columns(
+        pl
+        .col("date")
+        .dt
+        .strftime("%b-%Y")
+        .alias("month_name")
+    )
+    .select(
+        pl
+        .col("month_name", "qty-total-month")
+    )
+)
+```
+
+```{python}
+df_month = df.with_columns(
+    pl.col("date").dt.month().alias("month"),
+    pl.col("date").dt.strftime("%b").alias("month_name"),
+    (pl.col("quantity") / pl.col("quantity").sum()).alias("pct_total"),
+    pl.when(pl.col("sku").str.starts_with("S"))
+    .then(pl.lit("Special"))
+    .otherwise(pl.col("sku"))
+    .alias("sales_status")
+).select(
+    pl.col(
+        "name", "quantity", "sku", "month", "month_name", "sales_status", "pct_total"
+    )
+)
+df_month
+```
+
+```{python}
+df.with_columns(
+    pl.when(pl.col("sku").str.starts_with("S"))
+    .then(pl.lit("Special"))
+    .otherwise(pl.lit("Standard"))
+    .alias("sales_status")
+).to_pandas()
+```
+
+```{python}
+df.group_by("name", "sku").agg(pl.col("quantity").sum().alias("qty-total")).write_excel(
+    "sample.xlsx",
+    table_style={
+        "style": "Table Style Medium 2",
+    },
+    autofit=True,
+    sheet_zoom=150
+)
+```
+
