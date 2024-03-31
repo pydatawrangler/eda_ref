@@ -1,11 +1,22 @@
 ---
-title: "Chapter 8 - Index Alignment"
-subtitle: "Pandas Cookbook"
+title: Chapter 8 - Index Alignment
+subtitle: Pandas Cookbook
 author: Tom Madsen
-date: March 13, 2024
+date: 'March 13, 2024'
 format:
-    html:
-        self-contained: true 
+  html:
+    self-contained: true
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .qmd
+      format_name: quarto
+      format_version: '1.0'
+      jupytext_version: 1.15.1
+  kernelspec:
+    display_name: 'Python [conda env:eda]'
+    language: python
+    name: conda-env-eda-py
 ---
 
 ]
@@ -47,3 +58,166 @@ c1.union(c2)
 
 c1.symmetric_difference(c2)
 ```
+
+## Producting Cartesian products
+
+```{python}
+s1 = pd.Series(index=list("aaab"), data=np.arange(4))
+s1
+```
+
+```{python}
+s2 = pd.Series(index=list("cababb"), data=np.arange(6))
+s2
+```
+
+```{python}
+s1 + s2
+```
+
+## Exploding indexes
+
+```{python}
+file_url = "https://raw.githubusercontent.com/PacktPublishing/Pandas-Cookbook-Second-Edition/master/data/employee.csv"
+
+employee = pd.read_csv(
+    file_url, index_col="RACE"
+)
+
+employee.head()
+```
+
+```{python}
+salary1 = employee["BASE_SALARY"]
+salary2 = employee["BASE_SALARY"].copy()
+salary1 is salary2
+```
+
+```{python}
+salary1 = salary1.sort_index()
+salary1.head()
+```
+
+```{python}
+salary2.head()
+```
+
+```{python}
+salary_add = salary1 + salary2
+salary_add.head()
+```
+
+```{python}
+salary_add1 = salary1 + salary1
+```
+
+```{python}
+len(salary1), len(salary2), len(salary_add), len(salary_add1)
+```
+
+```{python}
+index_vc = salary1.index.value_counts(dropna=False)
+index_vc
+```
+
+```{python}
+index_vc.pow(2).sum()
+```
+
+```{python}
+cards1 = pd.Series(data=list('A23456789TJQK'), index=np.arange(13))
+```
+
+```{python}
+cards1
+```
+
+```{python}
+cards2 = pd.Series(data=list('HCDS'), index=np.arange(4))
+```
+
+```{python}
+cards2
+```
+
+```{python}
+cards1 + cards2
+```
+
+## Filling values with unequal indexes
+
+```{python}
+file_url_14 = "https://raw.githubusercontent.com/PacktPublishing/Pandas-Cookbook-Second-Edition/master/data/baseball14.csv"
+file_url_15 = "https://raw.githubusercontent.com/PacktPublishing/Pandas-Cookbook-Second-Edition/master/data/baseball15.csv"
+file_url_16 = "https://raw.githubusercontent.com/PacktPublishing/Pandas-Cookbook-Second-Edition/master/data/baseball16.csv"
+
+baseball_14 = pd.read_csv(
+    file_url_14, index_col="playerID"
+)
+
+baseball_15 = pd.read_csv(
+    file_url_15, index_col="playerID"
+)
+
+baseball_16 = pd.read_csv(
+    file_url_16, index_col="playerID"
+)
+```
+
+```{python}
+baseball_14.head()
+```
+
+```{python}
+baseball_14.index.difference(baseball_15.index)
+```
+
+```{python}
+baseball_15.index.difference(baseball_14.index)
+```
+
+```{python}
+hits_14 = baseball_14["H"]
+hits_15 = baseball_15["H"]
+hits_16 = baseball_16["H"]
+```
+
+```{python}
+hits_14.head()
+```
+
+```{python}
+(hits_14 + hits_15).head()
+```
+
+```{python}
+hits_total = hits_14.add(hits_15, fill_value=0).add(hits_16, fill_value=0).head()
+hits_total.head()
+```
+
+```{python}
+df_14 = baseball_14[["G", "AB", "R", "H"]]
+df_14.head()
+```
+
+```{python}
+df_15 = baseball_15[["AB", "R", "H", "HR"]]
+df_15.head()
+```
+
+```{python}
+(df_14 + df_15).head(10).style.highlight_null('green')
+```
+
+```{python}
+(df_14
+ .add(df_15, fill_value=0)
+ .head(10)
+ .style.highlight_null('green')
+)
+```
+
+## Adding columns from different DataFrames
+
+Page 260 (282 of 627 of PDF)
+
