@@ -1,0 +1,206 @@
+---
+title: Polars Tutorial
+subtitle: Martin Bel
+author: Tom Madsen
+date: 'March 30, 2024'
+format:
+  html:
+    self-contained: true
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .qmd
+#       format_name: quarto
+#       format_version: '1.0'
+#       jupytext_version: 1.15.1
+#   kernelspec:
+#     display_name: 'Python [conda env:eda]'
+#     language: python
+#     name: conda-env-eda-py
+---
+
+## Introduction
+This is a tutorial by Martin Bel which is a [playlist](https://www.youtube.com/playlist?list=PLo9Vi5B84_dfAuwJqNYG4XhZMrGTF3sBx) on his YouTube channel.
+
+Here is a link to the [github repo](https://github.com/martinbel/polars-tutorial) for the tutorial.
+
+## Environment
+
+```{python}
+import polars as pl
+import pandas as pd
+import numpy as np
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+```
+
+```{python}
+pl.__version__
+```
+
+## Read 9GB CSV file
+
+```{python}
+df_pl = pl.read_csv("data/2019-Nov.csv")
+```
+
+```{python}
+df_pl.shape
+```
+
+```{python}
+df_pl.head()
+```
+
+```{python}
+df_pl.dtypes
+```
+
+```{python}
+df_pl.head().to_pandas()
+```
+
+## Selecting and Filtering Data
+
+```{python}
+df_pl[0,:]
+```
+
+```{python}
+df_pl[:, ['event_time', 'price']].head()
+```
+
+```{python}
+df_pl.filter(pl.col("price") > 1000).head()
+```
+
+```{python}
+df_pl.sample(5)
+```
+
+```{python}
+df_pl.select(['brand', 'price']).head()
+```
+
+```{python}
+df_pl.with_columns(
+    [(pl.col("price") * 100).alias("price_x_100")
+]).head()
+```
+
+```{python}
+df_pl.filter(
+    pl.col('brand').is_in(['apple', 'samsung', 'motorola'])
+).head()
+```
+
+## Computation on the select context
+
+```{python}
+df_pl.select([
+    pl.col("product_id").n_unique()
+])
+```
+
+```{python}
+df_pl.select([
+    pl.col("price").min().alias("min"),
+    pl.col("price").mean().alias("mean"),
+    pl.col("price").median().alias("median"),
+    pl.col("price").max().alias("max"),
+    pl.col("price").std().alias("std_dev")
+])
+```
+
+```{python}
+df_pl.select([
+    pl.col("price")
+]).describe()
+```
+
+```{python}
+price = df_pl.select([
+    pl.col("price")
+])
+```
+
+```{python}
+price.sample(100000).to_pandas().hist(bins=30);
+```
+
+```{python}
+probs = [0, 0.25, 0.5, 0.75, 1]
+percentiles = [price.quantile(prob)[0,0] for prob in probs]
+```
+
+```{python}
+percentiles
+```
+
+```{python}
+pd.DataFrame(dict(probs=probs, percentiles=percentiles))
+```
+
+## How to update columns and intro to window function
+
+```{python}
+df_top = df_pl.head()
+```
+
+```{python}
+df_top.with_columns(
+    ("brand-" + pl.col("brand")).alias("brand2")
+)
+```
+
+```{python}
+df_top.with_columns([
+    ("brand-" + pl.col("brand")).alias("brand2"),
+    (pl.col("price") * 100).alias("price2")
+])
+```
+
+```{python}
+df_top.select([
+    pl.all(),
+    pl.col("price").mean().alias("price_avg")
+])
+```
+
+```{python}
+df_pl.with_columns([
+    pl.col("price").mean().over("category_code").alias("price_by_categorycode")
+]).head(10)
+```
+
+```{python}
+df_cat_window = df_pl.select([
+    pl.col("category_code"),
+    pl.col("price"),
+    pl.col("price").mean().over("category_code").alias("price_by_category"),
+    (pl.col("price")/pl.col("price").mean().over("category_code") - 1).alias("price_div_cat_average")
+])
+df_cat_window.head()
+```
+
+```{python}
+df_cat_window_sample = df_cat_window.sample(100000).to_pandas()
+```
+
+```{python}
+df_cat_window_sample.describe()
+```
+
+```{python}
+df_cat_window_sample.query('price_div_cat_average == -1.0')
+```
+
+```{python}
+df_cat_window_sample.price_div_cat_average.hist(bins=30, range=[-2,5])
+```
+
+```{python}
+df_cat_window_sample.price_div_cat_average.quantile(np.arange(0, 1.1, 0.1))
+```
+

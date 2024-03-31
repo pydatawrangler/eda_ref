@@ -124,4 +124,3 @@ def extract_city_name_pl() -> pl.Expr:
     cols = ["OriginCityName", "DestCityName"]
     return pl.col(cols).str.split(",").list.get(0)
 ```
-

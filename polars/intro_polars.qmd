@@ -152,4 +152,3 @@ df.group_by("name", "sku").agg(pl.col("quantity").sum().alias("qty-total")).writ
     sheet_zoom=150
 )
 ```
-
