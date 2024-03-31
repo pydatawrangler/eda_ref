@@ -7,3 +7,4 @@
 .vscode
 *.zip
 data/GSS_stata
+polars/data
