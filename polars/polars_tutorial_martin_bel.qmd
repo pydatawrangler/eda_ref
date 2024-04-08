@@ -6,17 +6,17 @@ date: 'March 30, 2024'
 format:
   html:
     self-contained: true
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .qmd
-#       format_name: quarto
-#       format_version: '1.0'
-#       jupytext_version: 1.15.1
-#   kernelspec:
-#     display_name: 'Python [conda env:eda]'
-#     language: python
-#     name: conda-env-eda-py
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .qmd
+      format_name: quarto
+      format_version: '1.0'
+      jupytext_version: 1.15.1
+  kernelspec:
+    display_name: 'Python [conda env:eda]'
+    language: python
+    name: conda-env-eda-py
 ---
 
 ## Introduction
@@ -27,12 +27,12 @@ Here is a link to the [github repo](https://github.com/martinbel/polars-tutorial
 ## Environment
 
 ```{python}
-import polars as pl
-import pandas as pd
-import numpy as np
-
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import seaborn as sns
+
+import polars as pl
 ```
 
 ```{python}
@@ -64,11 +64,11 @@ df_pl.head().to_pandas()
 ## Selecting and Filtering Data
 
 ```{python}
-df_pl[0,:]
+df_pl[0, :]
 ```
 
 ```{python}
-df_pl[:, ['event_time', 'price']].head()
+df_pl[:, ["event_time", "price"]].head()
 ```
 
 ```{python}
@@ -80,49 +80,41 @@ df_pl.sample(5)
 ```
 
 ```{python}
-df_pl.select(['brand', 'price']).head()
+df_pl.select(["brand", "price"]).head()
 ```
 
 ```{python}
-df_pl.with_columns(
-    [(pl.col("price") * 100).alias("price_x_100")
-]).head()
+df_pl.with_columns([(pl.col("price") * 100).alias("price_x_100")]).head()
 ```
 
 ```{python}
-df_pl.filter(
-    pl.col('brand').is_in(['apple', 'samsung', 'motorola'])
-).head()
+df_pl.filter(pl.col("brand").is_in(["apple", "samsung", "motorola"])).head()
 ```
 
 ## Computation on the select context
 
 ```{python}
-df_pl.select([
-    pl.col("product_id").n_unique()
-])
+df_pl.select([pl.col("product_id").n_unique()])
 ```
 
 ```{python}
-df_pl.select([
-    pl.col("price").min().alias("min"),
-    pl.col("price").mean().alias("mean"),
-    pl.col("price").median().alias("median"),
-    pl.col("price").max().alias("max"),
-    pl.col("price").std().alias("std_dev")
-])
+df_pl.select(
+    [
+        pl.col("price").min().alias("min"),
+        pl.col("price").mean().alias("mean"),
+        pl.col("price").median().alias("median"),
+        pl.col("price").max().alias("max"),
+        pl.col("price").std().alias("std_dev"),
+    ]
+)
 ```
 
 ```{python}
-df_pl.select([
-    pl.col("price")
-]).describe()
+df_pl.select([pl.col("price")]).describe()
 ```
 
 ```{python}
-price = df_pl.select([
-    pl.col("price")
-])
+price = df_pl.select([pl.col("price")])
 ```
 
 ```{python}
@@ -131,7 +123,7 @@ price.sample(100000).to_pandas().hist(bins=30);
 
 ```{python}
 probs = [0, 0.25, 0.5, 0.75, 1]
-percentiles = [price.quantile(prob)[0,0] for prob in probs]
+percentiles = [price.quantile(prob)[0, 0] for prob in probs]
 ```
 
 ```{python}
@@ -149,38 +141,39 @@ df_top = df_pl.head()
 ```
 
 ```{python}
+df_top.with_columns(("brand-" + pl.col("brand")).alias("brand2"))
+```
+
+```{python}
 df_top.with_columns(
-    ("brand-" + pl.col("brand")).alias("brand2")
+    [
+        ("brand-" + pl.col("brand")).alias("brand2"),
+        (pl.col("price") * 100).alias("price2"),
+    ]
 )
 ```
 
 ```{python}
-df_top.with_columns([
-    ("brand-" + pl.col("brand")).alias("brand2"),
-    (pl.col("price") * 100).alias("price2")
-])
+df_top.select([pl.all(), pl.col("price").mean().alias("price_avg")])
 ```
 
 ```{python}
-df_top.select([
-    pl.all(),
-    pl.col("price").mean().alias("price_avg")
-])
+df_pl.with_columns(
+    [pl.col("price").mean().over("category_code").alias("price_by_categorycode")]
+).head(10)
 ```
 
 ```{python}
-df_pl.with_columns([
-    pl.col("price").mean().over("category_code").alias("price_by_categorycode")
-]).head(10)
-```
-
-```{python}
-df_cat_window = df_pl.select([
-    pl.col("category_code"),
-    pl.col("price"),
-    pl.col("price").mean().over("category_code").alias("price_by_category"),
-    (pl.col("price")/pl.col("price").mean().over("category_code") - 1).alias("price_div_cat_average")
-])
+df_cat_window = df_pl.select(
+    [
+        pl.col("category_code"),
+        pl.col("price"),
+        pl.col("price").mean().over("category_code").alias("price_by_category"),
+        (pl.col("price") / pl.col("price").mean().over("category_code") - 1).alias(
+            "price_div_cat_average"
+        ),
+    ]
+)
 df_cat_window.head()
 ```
 
@@ -193,14 +186,135 @@ df_cat_window_sample.describe()
 ```
 
 ```{python}
-df_cat_window_sample.query('price_div_cat_average == -1.0')
+df_cat_window_sample.query("price_div_cat_average == -1.0")
 ```
 
 ```{python}
-df_cat_window_sample.price_div_cat_average.hist(bins=30, range=[-2,5])
+df_cat_window_sample.price_div_cat_average.hist(bins=30, range=[-2, 5])
 ```
 
 ```{python}
 df_cat_window_sample.price_div_cat_average.quantile(np.arange(0, 1.1, 0.1))
 ```
+
+## Groupby
+
+```{python}
+df_pl.groupby("brand").agg([pl.count()]).sort("count", descending=True).head()
+```
+
+```{python}
+df_pl.group_by("brand").agg([pl.len()]).sort("len", descending=True).head()
+```
+
+```{python}
+(
+    df_pl.group_by("brand")
+    .agg([pl.len()])
+    .sort("len", descending=True)
+    .with_columns([(pl.col("len") / pl.col("len").sum()).alias("n_pct")])
+    .head(10)
+)
+```
+
+```{python}
+df_pl["event_type"].value_counts()
+```
+
+```{python}
+df_brand_event = (
+    df_pl.group_by(["brand", "event_type"]).agg([pl.len()]).sort("len", descending=True)
+)
+
+df_brand_event.head()
+```
+
+```{python}
+df_brand_event_wide = df_brand_event.pivot(
+    values="len", index=["brand"], columns=["event_type"]
+).sort("purchase", descending=True, nulls_last=True)
+df_brand_event_wide.head()
+```
+
+```{python}
+agg_performance = df_brand_event_wide.with_columns(
+    [
+        (pl.col("cart") / pl.col("view")).alias("cart_by_views"),
+        (pl.col("purchase") / pl.col("cart")).alias("buy_by_cart"),
+        (pl.col("purchase") / pl.col("view")).alias("buy_by_views"),
+    ]
+)
+
+agg_performance.head()
+```
+
+```{python}
+(
+    agg_performance.filter(pl.col("buy_by_cart") < 1)
+    .select(["cart_by_views", "buy_by_cart", "buy_by_views"])
+    .to_pandas()
+    .quantile([0, 0.25, 0.5, 0.75, 0.99, 1])
+    # .boxplot()
+)
+```
+
+```{python}
+(
+    agg_performance.filter(pl.col("buy_by_cart") < 1)
+    .select(["cart_by_views", "buy_by_cart", "buy_by_views"])
+    .quantile(0.5)
+    # .boxplot()
+)
+```
+
+```{python}
+df_user_brand_event = df_pl.group_by(["user_id", "brand", "event_type"]).agg([pl.len()])
+
+df_user_brand_event.head()
+```
+
+```{python}
+df_user_brand_event.shape
+```
+
+```{python}
+df_user_brand_event = (
+    df_pl.group_by(["user_id", "brand", "event_type"])
+    .agg([pl.len()])
+    .pivot(values="len", index=["user_id", "brand"], columns=["event_type"])
+    .sort("purchase", descending=True, nulls_last=True)
+    .with_columns(
+        [
+            pl.col("purchase").fill_null(strategy="zero"),
+            pl.col("view").fill_null(strategy="zero"),
+            pl.col("cart").fill_null(strategy="zero"),
+        ]
+    )
+    .with_columns((pl.col("purchase") / pl.col("view")).alias("pct_by_views"))
+)
+df_user_brand_event.head()
+```
+
+```{python}
+df_user_brand_event.filter([pl.col("pct_by_views").is_infinite()])
+```
+
+```{python}
+df_user_brand_event_corrected = df_user_brand_event.with_columns(
+    pl.when(pl.col("pct_by_views").is_infinite())
+    .then(None)
+    .otherwise(pl.col("pct_by_views"))
+    .alias("corrected_pct_by_views")
+)
+```
+
+```{python}
+(
+    df_user_brand_event_corrected
+    .fill_nan(0)
+    .filter(pl.col("corrected_pct_by_views") > 0)
+    .sort(pl.col("corrected_pct_by_views"), descending=True, nulls_last=True)
+)
+```
+
 
