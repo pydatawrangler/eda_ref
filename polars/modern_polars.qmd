@@ -20,6 +20,10 @@ Link to article:
 
 https://kevinheavey.github.io/modern-polars/
 
+# Indexing (Or Lack Thereof)
+
+## 1.1 Fetch Data
+
 ```{python}
 from pathlib import Path
 from zipfile import ZipFile
@@ -49,9 +53,7 @@ if not dest.exists():
         zf.extract(zf.filelist[0].filename, path=data_dir)
 ```
 
-# Indexing (Or Lack Thereof)
-
-## Read the data
+## 1.2 Read the data
 
 ```{python}
 extracted = data_dir / "On_Time_Reporting_Carrier_On_Time_Performance_(1987_present)_2022_1.csv"

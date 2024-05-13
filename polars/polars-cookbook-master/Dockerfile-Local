@@ -1,0 +1,12 @@
+FROM ipython/scipyserver
+
+RUN mkdir /polars-cookbook
+WORKDIR /polars-cookbook
+RUN mkdir ./cookbook ./data ./images
+
+COPY cookbook/*.ipynb ./cookbook/
+COPY cookbook/*.py ./cookbook/
+COPY images/*.png ./images/
+COPY data/* ./data/
+
+WORKDIR /polars-cookbook/cookbook/
