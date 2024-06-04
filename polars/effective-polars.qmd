@@ -37,21 +37,18 @@ pl.__version__
 ## Laziness
 
 ```{python}
-#| jupyter: {outputs_hidden: true}
 df_ops = set(x for x in dir(pl.DataFrame()) if not x.startswith("_"))
 lazy_ops = set(x for x in dir(pl.LazyFrame()) if not x.startswith("_"))
 sorted(df_ops - lazy_ops)
 ```
 
 ```{python}
-#| jupyter: {outputs_hidden: true}
 sorted(lazy_ops & df_ops)
 ```
 
 ## Contexts & Expressions
 
 ```{python}
-#| jupyter: {outputs_hidden: true}
 col = pl.col("sample")
 col_ops = set(x for x in dir(col) if not x.startswith("_"))
 sorted(col_ops)
@@ -139,12 +136,10 @@ print(
 ## Data Type Inference and Manual Overrides
 
 ```{python}
-#| jupyter: {outputs_hidden: true}
 (df.dtypes)
 ```
 
 ```{python}
-#| jupyter: {outputs_hidden: true}
 (df.schema)
 ```
 
@@ -328,7 +323,7 @@ print(df
 )
 ```
 
-## String Columns - STOPPED HERE
+## String Columns
 
 ```{python}
 print(df
@@ -357,7 +352,7 @@ print(df
 ```
 
 ```{python}
-print(df
+(df
   .select(pl.col(cols))
   .with_columns(pl.col('year').cast(pl.Int16),
        pl.col(['cylinders', 'highway08', 'city08']).cast(pl.UInt8),
@@ -381,7 +376,7 @@ df.select(pl.col("createdOn")).to_series().item(1)
 ```
 
 ```{python}
-print(df
+(df
   .select(pl.col(cols))
   .with_columns(pl.col('year').cast(pl.Int16),
        pl.col(['cylinders', 'highway08', 'city08']).cast(pl.UInt8),
@@ -422,7 +417,7 @@ def tweak_auto(df):
              .fill_null(6))    
     )
 
-print(tweak_auto(df))
+(tweak_auto(df))
 ```
 
 ```{python}
@@ -497,32 +492,34 @@ tweak_auto(lazy)
 ## Getting the Data
 
 ```{python}
->>> import polars as pl 
->>> path = 'data/vehicles.csv'
->>> raw = pl.read_csv(path, null_values=['NA'])
+import polars as pl 
+path = 'data/vehicles.csv'
+raw = pl.read_csv(path, null_values=['NA'])
+raw.head()
+```
 
->>> def tweak_auto(df):
-...    cols = ['year', 'make', 'model', 'displ', 'cylinders', 'trany', 
-...           'drive', 'VClass', 'fuelType', 'barrels08', 'city08', 
-...           'highway08', 'createdOn']
-...    return (df
-...     .select(pl.col(cols))
-...     .with_columns(pl.col('year').cast(pl.Int16),
-...        pl.col(['cylinders', 'highway08', 'city08']).cast(pl.UInt8),
-...        pl.col(['displ', 'barrels08']).cast(pl.Float32),
-...        pl.col(['make', 'model', 'VClass', 'drive', 
-...                'fuelType']).cast(pl.Categorical),
-...        pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
-...        is_automatic=pl.col('trany')                    
-...               .str.contains('Automatic')
-...               .fill_null('Automatic'),
-...        num_gears=pl.col('trany')
-...              .str.extract(r'(\d+)')
-...              .cast(pl.UInt8)
-...              .fill_null(6))    
-...     )
-
->>> autos = tweak_auto(raw)
+```{python}
+def tweak_auto(df):
+   cols = ['year', 'make', 'model', 'displ', 'cylinders', 'trany', 
+          'drive', 'VClass', 'fuelType', 'barrels08', 'city08', 
+          'highway08', 'createdOn']
+   return (df
+    .select(pl.col(cols))
+    .with_columns(pl.col('year').cast(pl.Int16),
+       pl.col(['cylinders', 'highway08', 'city08']).cast(pl.UInt8),
+        pl.col(['displ', 'barrels08']).cast(pl.Float32),
+        pl.col(['make', 'model', 'VClass', 'drive', 
+                'fuelType']).cast(pl.Categorical),
+        pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
+        is_automatic=pl.col('trany')                    
+               .str.contains('Automatic')
+             .fill_null('Automatic'),
+      num_gears=pl.col('trany')
+              .str.extract(r'(\d+)')
+              .cast(pl.UInt8)
+              .fill_null(6))    
+     ) 
+autos = tweak_auto(raw)
 ```
 
 ```{python}
@@ -532,67 +529,63 @@ print(autos)
 ## Adding Columns
 
 ```{python}
->>> print(autos
-...   .select(pl.col(['highway08', 'city08']),
-...           mpg_ratio=(pl.col('highway08') / pl.col('city08')))
-...           
-...  )
->>> 
+print(autos
+  .select(pl.col(['highway08', 'city08']),
+          mpg_ratio=(pl.col('highway08') / pl.col('city08')))
+          
+ )
 ```
 
 ```{python}
->>> (autos
-...   .with_columns(mpg_ratio=pl.col('highway08') / pl.col('city08'))
-...  )
+(autos
+  .with_columns(mpg_ratio=pl.col('highway08') / pl.col('city08'))
+ )
 ```
 
 ## Simulating the Index
 
 ```{python}
->>> (autos
-...  .with_row_index('index')
-... )
->>> 
+(autos
+ .with_row_index('index')
+)
 ```
 
 ## Removing Columns
 
 ```{python}
->>> print(autos
-...  .drop('createdOn')
-...  .columns
-... )
->>> 
+print(autos
+ .drop('createdOn')
+ .columns
+)
 ```
 
 ```{python}
->>> final_cols = ['year', 'make', 'model', 'displ', 'cylinders', 'trany', 
-...   'drive', 'VClass', 'fuelType', 'barrels08', 'city08', 'highway08', 
-...   'is_automatic', 'num_gears']
+final_cols = ['year', 'make', 'model', 'displ', 'cylinders', 'trany', 
+  'drive', 'VClass', 'fuelType', 'barrels08', 'city08', 'highway08', 
+  'is_automatic', 'num_gears']
 
->>> (autos
-...  .select(final_cols)
-... )
+(autos
+ .select(final_cols)
+)
 ```
 
 ```{python}
->>> (autos
-...   .select(pl.all()
-...            .exclude(['createdOn', 'barrels08'])
-...            .name.suffix('_auto'))
-... )
->>> 
+(autos
+  .select(pl.all()
+           .exclude(['createdOn', 'barrels08'])
+           .name.suffix('_auto'))
+)
 ```
 
 ## Renaming Columns
 
 ```{python}
->>> final_cols = ['year', 'make', 'model', 'city_mpg', 'highway_mpg']
->>> print(autos
-...  .with_columns(pl.col('city08').alias('city_mpg'),
-...                highway_mpg=pl.col('highway08'))
-...  .select(final_cols)
-...  )
+final_cols = ['year', 'make', 'model', 'city_mpg', 'highway_mpg']
+print(autos
+ .with_columns(pl.col('city08').alias('city_mpg'),
+               highway_mpg=pl.col('highway08'))
+ .select(final_cols)
+ )
 ```
 
 ```{python}
@@ -609,39 +602,37 @@ print(autos)
 ```
 
 ```{python}
->>> final_cols = ['year', 'make', 'model', 'city_mpg', 'highway_mpg']
->>> print(autos
-...  .rename({'city08':'city_mpg',
-...           'highway08':'highway_mpg'})
-...  .select(final_cols)
-...  )
+final_cols = ['year', 'make', 'model', 'city_mpg', 'highway_mpg']
+print(autos
+ .rename({'city08':'city_mpg',
+          'highway08':'highway_mpg'})
+ .select(final_cols)
+ )
 ```
 
 ## Joining DataFrames
 
 ```{python}
->>> trucks = pl.DataFrame(
-...    {'make': ['Ford', 'Tesla', 'Chevy', 'Custom', 'Ford'],
-...     'model': ['F150', 'Cybertruck', 'Silverado', 'HotRod', 'F250'],
-...     'year': [2018, 2024, 2019, 1967, 2017],
-...     'city_mpg': [19, None, 17, 12, 18],
-...    })
+trucks = pl.DataFrame(
+   {'make': ['Ford', 'Tesla', 'Chevy', 'Custom', 'Ford'],
+    'model': ['F150', 'Cybertruck', 'Silverado', 'HotRod', 'F250'],
+    'year': [2018, 2024, 2019, 1967, 2017],
+    'city_mpg': [19, None, 17, 12, 18],
+   })
 
->>> (trucks)
->>> 
+(trucks)
 ```
 
 ```{python}
->>> manufacturer = pl.DataFrame(
-...    {'name': ['Ford', 'Tesla', 'Chevy', 'Toyota'],
-...     'country': ['USA', 'USA', 'USA', 'Japan'],
-...     'founded': [1903, 2003, 1911, 1937],
-...     'employees': [199_000, 48_000, 225_000, 370_000],
-...     'vehicles': [80, 3, 45, 30],
-...     })
+manufacturer = pl.DataFrame(
+   {'name': ['Ford', 'Tesla', 'Chevy', 'Toyota'],
+    'country': ['USA', 'USA', 'USA', 'Japan'],
+    'founded': [1903, 2003, 1911, 1937],
+    'employees': [199_000, 48_000, 225_000, 370_000],
+    'vehicles': [80, 3, 45, 30],
+    })
 
->>> (manufacturer)
->>> 
+(manufacturer)
 ```
 
 ```{python}
@@ -653,17 +644,15 @@ print(autos)
 ## Left Joins
 
 ```{python}
->>> (manufacturer.join(trucks, how='left', left_on='name', 
-...                         right_on='make'))
->>> 
+(manufacturer.join(trucks, how='left', left_on='name', 
+                        right_on='make'))
 ```
 
 ## Right Joins
 
 ```{python}
->>> (trucks.join(manufacturer, how='left', right_on='name', 
-...                   left_on='make'))
->>> 
+(trucks.join(manufacturer, how='left', right_on='name', 
+                  left_on='make'))
 ```
 
 ```{python}
@@ -677,54 +666,52 @@ print(autos)
 ## Inner Joins
 
 ```{python}
->>> (manufacturer.join(trucks, left_on='name', right_on='make'))
->>> 
+(manufacturer.join(trucks, left_on='name', right_on='make'))
 ```
 
 ## Outer Joins
 
 ```{python}
->>> (manufacturer.join(trucks, how='outer', left_on='name', 
-...                         right_on='make'))
->>> 
+(manufacturer.join(trucks, how='outer', left_on='name', 
+                        right_on='make'))
 ```
 
 ## Semi Joins
 
 ```{python}
->>> (manufacturer.join(trucks, how='semi', left_on='name', 
-...                         right_on='make'))
->>> 
-```
-
-shape: (3, 5)
-│ name    country   founded   employees   vehicles │
-│ str     str       i64       i64         i64      │
-╞══════════════════════════════════════════════════╡
-│ Ford    USA       1903      199000      80       │
-│ Tesla   USA       2003      48000       3        │
-│ Chevy   USA       1911      225000      45       │
+(manufacturer.join(trucks, how='semi', left_on='name', 
+                        right_on='make'))
 ```
 
 ## Cross Joins
 
 ```{python}
->>> sizes = pl.DataFrame({'size': ['small', 'medium', 'large'],})
->>> colors = pl.DataFrame({'color': ['red', 'green', ],})
->>> (sizes.join(colors, how='cross'))
->>> 
+sizes = pl.DataFrame({'size': ['small', 'medium', 'large'],})
+colors = pl.DataFrame({'color': ['red', 'green', ],})
+```
+
+```{python}
+sizes
+```
+
+```{python}
+colors
+```
+
+```{python}
+(sizes.join(colors, how='cross'))
 ```
 
 ## Anti Joins
 
 ```{python}
->>> (manufacturer.join(trucks, how='anti', left_on='name', 
-...                         right_on='make'))
+(manufacturer.join(trucks, how='anti', left_on='name', 
+                        right_on='make'))
 ```
 
 ```{python}
->>> (trucks.join(manufacturer, how='anti', right_on='name', 
-...                   left_on='make'))
+(trucks.join(manufacturer, how='anti', right_on='name', 
+                  left_on='make'))
 ```
 
 ## Join Validation
@@ -749,14 +736,14 @@ shape: (3, 5)
 ```
 
 ```{python}
->>> (manufacturer.join(trucks, left_on='name', right_on='make',
-...                         validate='1:m'))
+(manufacturer.join(trucks, left_on='name', right_on='make',
+                        validate='1:m'))
 ```
 
 ```{python}
->>> (trucks
-...   .filter(pl.col('make').is_duplicated())
-... )
+(trucks
+  .filter(pl.col('make').is_duplicated())
+)
 ```
 
 ## Speeding up Joins with Sorting
@@ -772,10 +759,10 @@ inv_raw = pl.read_excel(
 ```
 
 ```{python}
->>> (inv_raw
-...   .select(['state_abbr', 'gisjoin', 'city_id', 'city_name',
-...            'fuel_type_org', 'fuel_type', 'class', '2000', '2001'])
-... )
+(inv_raw
+  .select(['state_abbr', 'gisjoin', 'city_id', 'city_name',
+           'fuel_type_org', 'fuel_type', 'class', '2000', '2001'])
+)
 ```
 
 ```{python}
@@ -851,45 +838,15 @@ agg_yr = (
 )
 ```
 
-```pycon
->>> print(agg_yr)
-shape: (361, 4)
-│ year   simple_class   fuel_type          mean_mpg │
-│ i16    str            str                f64      │
-╞═══════════════════════════════════════════════════╡
-│ 1995   Other          Gasoline vehicle   15.39    │
-│ 1995   Truck          Diesel vehicle     14.67    │
-│ 1996   Car            Other/Unknown      15.00    │
-│ .      .              .                  .        │
-│ 2017   Truck          Gasoline vehicle   16.64    │
-│ 2020   Car            Gasoline vehicle   22.84    │
-│ 1991   Truck          Gasoline vehicle   13.98    │
+```{python}
+agg_yr
 ```
 
-```pycon
->>> print (agg_yr
-...  .join(inv_yr, left_on=['year', 'simple_class', 'fuel_type'], 
-...        right_on=['year', 'class', 'fuel_type'])
-... )
-shape: (3_234_418, 8)
-│ year   simple_cl   fuel_type   .   city_nam   fuel_typ   percent │
-│ i16    ass         str             e          e_org      f32     │
-│        str                         str        str                │
-╞══════════════════════════════════════════════════════════════════╡
-│ 2000   Car         Other/Unk   .   Abbevill   BI         0.00    │
-│                    nown            e                             │
-│ 2000   Car         Diesel      .   Abbevill   DIES       0.03    │
-│                    vehicle         e                             │
-│ 2000   Car         Flex fuel   .   Abbevill   FFV        0.07    │
-│                    vehicle         e                             │
-│ .      .           .           .   .          .          .       │
-│ 2018   Car         Gasoline    .   Yoder      GAS        0.00    │
-│                    vehicle                                       │
-│ 2018   Truck       Gasoline    .   Yoder      GAS        0.00    │
-│                    vehicle                                       │
-│ 2018   Car         Hybrid      .   Yoder      HYBRID     0.00    │
-│                    electric                   ELECTRIC           │
-│                    vehicle                    VEHICLE            │
+```{python}
+(agg_yr
+ .join(inv_yr, left_on=['year', 'simple_class', 'fuel_type'], 
+       right_on=['year', 'class', 'fuel_type'])
+)
 ```
 
 ```{python}
@@ -897,13 +854,13 @@ agg_yr_shuf = agg_yr.sample(len(agg_yr), with_replacement=False, seed=42)
 inv_yr_shuf = inv_yr.sample(len(inv_yr), with_replacement=False, seed=42)
 ```
 
-```pycon
->>> %%timeit
->>> (agg_yr_shuf
-...  .join(inv_yr_shuf, left_on=['year', 'simple_class', 'fuel_type'], 
-...        right_on=['year', 'class', 'fuel_type'])
-... )
-89.7 ms ± 6.44 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
+```{python}
+%%timeit
+(agg_yr_shuf
+    .join(inv_yr_shuf, left_on=['year', 'simple_class', 'fuel_type'],
+        right_on=['year', 'class', 'fuel_type']
+    )
+)
 ```
 
 ```{python}
@@ -912,13 +869,14 @@ agg_yr_sort = agg_yr.sort("year")
 inv_yr_sort = inv_yr.sort("year")
 ```
 
-```pycon
->>> %%timeit
->>> (agg_yr_sort
-...  .join(inv_yr_sort, left_on=['year', 'simple_class', 'fuel_type'], 
-...        right_on=['year', 'class', 'fuel_type'])
-... )
-81.9 ms ± 2.45 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
+```{python}
+%%timeit
+(
+    agg_yr_sort
+    .join(inv_yr_sort, left_on=['year', 'simple_class', 'fuel_type'],
+            right_on=['year', 'class', 'fuel_type']
+    )
+)
 ```
 
 ```{python}
@@ -927,13 +885,14 @@ agg_yr_sort2 = agg_yr.sort("year", "simple_class", "fuel_type")
 inv_yr_sort2 = inv_yr.sort("year", "class", "fuel_type")
 ```
 
-```pycon
->>> %%timeit
->>> (agg_yr_sort2
-...  .join(inv_yr_sort2, left_on=['year', 'simple_class', 'fuel_type'], 
-...        right_on=['year', 'class', 'fuel_type'])
-... )
-73.3 ms ± 1.92 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
+```{python}
+%%timeit
+(
+    agg_yr_sort2
+    .join(inv_yr_sort2, left_on=['year', 'simple_class', 'fuel_type'],
+            right_on=['year', 'class', 'fuel_type']
+    )
+)
 ```
 
 ```{python}
@@ -946,72 +905,54 @@ with pl.StringCache():
     )
 ```
 
-```pycon
->>> %%timeit
->>> (agg_yr_cat
-...  .join(inv_yr_cat, left_on=['year', 'simple_class', 'fuel_type'], 
-...        right_on=['year', 'class', 'fuel_type'])
-... )
-56.4 ms ± 1.11 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
+```{python}
+%%timeit
+(
+    agg_yr_cat
+    .join(inv_yr_cat, left_on=['year', 'simple_class', 'fuel_type'],
+            right_on=['year', 'class', 'fuel_type']
+    )
+)
 ```
 
-```pycon
->>> agg_pd = agg_yr_sort2.to_pandas().sort_values(['year', 'simple_class', 
-...                                                'fuel_type'])
->>> inv_pd = inv_yr_sort2.to_pandas().sort_values(['year', 'class', 
-...                                                'fuel_type'])
+```{python}
+agg_pd = agg_yr_sort2.to_pandas().sort_values(['year', 'simple_class', 'fuel_type'])
+inv_pd = inv_yr_sort2.to_pandas().sort_values(['year', 'class', 'fuel_type'])
 ```
 
-```pycon
->>> %%timeit
->>> (agg_pd
-...  .merge(inv_pd, left_on=['year', 'simple_class', 'fuel_type'], 
-...         right_on=['year', 'class', 'fuel_type'])
-... )
-1.02 s ± 29.8 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+```{python}
+%%timeit
+(
+    agg_pd
+    .merge(inv_pd, left_on=['year', 'simple_class', 'fuel_type'],
+    right_on=['year', 'class', 'fuel_type'])
+)
 ```
 
 ## Visualizing the Join
 
-```pycon
->>> print(agg_yr
-...  .join(inv_yr, left_on=['year', 'simple_class', 'fuel_type'], 
-...        right_on=['year', 'class', 'fuel_type'])
-...  .filter(city_name='Salt Lake City')
-...  .pivot(index='year', columns='simple_class', values='mean_mpg', 
-...         aggregate_function='mean')
-... )
-shape: (19, 3)
-│ year   Car     Truck │
-│ i16    f64     f64   │
-╞══════════════════════╡
-│ 2000   20.47   12.56 │
-│ 2001   19.97   12.69 │
-│ 2002   20.83   12.62 │
-│ .      .       .     │
-│ 2016   34.48   17.66 │
-│ 2017   43.26   17.58 │
-│ 2018   41.72   17.95 │
+```{python}
+print(agg_yr
+ .join(inv_yr, left_on=['year', 'simple_class', 'fuel_type'], 
+       right_on=['year', 'class', 'fuel_type'])
+ .filter(city_name='Salt Lake City')
+ .pivot(index='year', columns='simple_class', values='mean_mpg', 
+        aggregate_function='mean')
+)
 ```
 
-```pycon
->>> (agg_yr
-...  .join(inv_yr, left_on=['year', 'simple_class', 'fuel_type'], 
-...        right_on=['year', 'class', 'fuel_type'])
-...  .filter(city_name='Salt Lake City')
-...  .pivot(index='year', columns='simple_class', values='mean_mpg', 
-...         aggregate_function='mean')
-...  .plot.line(x='year', y=['Car', 'Truck'], 
-...             title='Salt Lake City Vehicle Mileage')
-... )
-
-
-
-
-
-:NdOverlay   [Variable]
-   :Curve   [year]   (value)
+```{python}
+(agg_yr
+ .join(inv_yr, left_on=['year', 'simple_class', 'fuel_type'], 
+       right_on=['year', 'class', 'fuel_type'])
+ .filter(city_name='Salt Lake City')
+ .pivot(index='year', columns='simple_class', values='mean_mpg', 
+        aggregate_function='mean')
+ .plot.line(x='year', y=['Car', 'Truck'], 
+            title='Salt Lake City Vehicle Mileage')
+)
 ```
+## STOPPED HERE
 
 ## Adding Rows
 
