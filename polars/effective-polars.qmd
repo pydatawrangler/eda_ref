@@ -749,6 +749,10 @@ colors
 ## Speeding up Joins with Sorting
 
 ```{python}
+import polars as pl
+```
+
+```{python}
 url = (
     "https://data.openei.org/files/907/"
     "2016cityandcountylightdutyvehicleinventory.xlsb"
@@ -952,471 +956,229 @@ print(agg_yr
             title='Salt Lake City Vehicle Mileage')
 )
 ```
-## STOPPED HERE
 
 ## Adding Rows
 
-```pycon
->>> print(autos
-...  .tail(10)
-...  .vstack(autos.head(10))
-... )
-shape: (20, 15)
-│ year   make     model     .   createdOn    is_automa   num_gears │
-│ i16    cat      cat           datetime[μ   tic         u8        │
-│                               s]           str                   │
-╞══════════════════════════════════════════════════════════════════╡
-│ 1993   Saab     900       .   2013-01-01   false       5         │
-│                               00:00:00                           │
-│ 1993   Saturn   SL        .   2013-01-01   true        4         │
-│                               00:00:00                           │
-│ 1993   Saturn   SL        .   2013-01-01   true        4         │
-│                               00:00:00                           │
-│ .      .        .         .   .            .           .         │
-│ 1993   Toyota   Corolla   .   2013-01-01   true        3         │
-│                               00:00:00                           │
-│ 1993   Toyota   Corolla   .   2013-01-01   false       5         │
-│                               00:00:00                           │
-│ 1993   Toyota   Corolla   .   2013-01-01   true        4         │
-│                               00:00:00                           │
+```{python}
+print(autos
+      .tail(10)
+      .vstack(autos.head(10)))
 ```
 
 ## Reshaping and Pivoting Data
 
-```pycon
->>> top_n = (autos
-...  .group_by('make')
-...  .agg(pl.col('city08').count())
-...  .sort('city08')
-...  .tail(5)
-... )
+```{python}
+top_n = (autos
+ .group_by('make')
+ .agg(pl.col('city08').count())
+ .sort('city08')
+ .tail(5)
+)
 
->>> print(top_n)
-shape: (5, 2)
-│ make        city08 │
-│ cat         u32    │
-╞════════════════════╡
-│ Toyota      2071   │
-│ GMC         2494   │
-│ Dodge       2583   │
-│ Ford        3371   │
-│ Chevrolet   4003   │
+print(top_n)
 ```
 
-```pycon
->>> print(autos
-...  .filter(pl.col('make').is_in(top_n['make']))     
-...  .pivot(index='year', columns='make', values='city08', 
-...         aggregate_function='median')
-... )
-shape: (37, 6)
-│ year   Dodge   Toyota   Chevrolet   Ford    GMC   │
-│ i16    f64     f64      f64         f64     f64   │
-╞═══════════════════════════════════════════════════╡
-│ 1985   17.00   22.00    15.00       15.00   15.00 │
-│ 1993   14.00   16.00    15.00       15.00   14.00 │
-│ 1994   14.50   17.00    15.00       15.00   14.00 │
-│ .      .       .        .           .       .     │
-│ 2018   16.00   22.00    19.50       19.00   16.00 │
-│ 2019   16.00   22.00    18.00       19.00   15.00 │
-│ 2020   null    29.00    29.00       21.00   null  │
+```{python}
+print(autos
+ .filter(pl.col('make').is_in(top_n['make']))     
+ .pivot(index='year', columns='make', values='city08', 
+        aggregate_function='median')
+)
 ```
 
-```pycon
->>> pivoted = (autos
-...  .filter(pl.col('make').is_in(top_n['make']))     
-...  .pivot(index='year', columns='make', values='city08', 
-...         aggregate_function='median')
-...  .sort('year')
-... )
+```{python}
+pivoted = (autos
+ .filter(pl.col('make').is_in(top_n['make']))     
+ .pivot(index='year', columns='make', values='city08', 
+        aggregate_function='median')
+ .sort('year')
+)
 
->>> print(pivoted)
-shape: (37, 6)
-│ year   Dodge   Toyota   Chevrolet   Ford    GMC   │
-│ i16    f64     f64      f64         f64     f64   │
-╞═══════════════════════════════════════════════════╡
-│ 1984   18.00   22.00    16.00       14.50   15.00 │
-│ 1985   17.00   22.00    15.00       15.00   15.00 │
-│ 1986   14.50   19.00    15.00       16.00   15.00 │
-│ .      .       .        .           .       .     │
-│ 2018   16.00   22.00    19.50       19.00   16.00 │
-│ 2019   16.00   22.00    18.00       19.00   15.00 │
-│ 2020   null    29.00    29.00       21.00   null  │
+pivoted
 ```
 
-```pycon
->>> pivoted = (autos
-...  .filter(pl.col('make').is_in(top_n['make']))
-...  .sort('year')
-...  .set_sorted('year')
-...  .pivot(index='year', columns='make', values='city08', 
-...         aggregate_function='median')
-... )
+```{python}
+pivoted = (
+    autos
+    .filter(pl.col('make').is_in(top_n['make']))
+    .sort('year')
+    .set_sorted('year')
+    .pivot(index='year', columns='make', values='city08',
+          aggregate_function='median')
+)
 
->>> print(pivoted)
-shape: (37, 6)
-│ year   Chevrolet   Ford    Toyota   Dodge   GMC   │
-│ i16    f64         f64     f64      f64     f64   │
-╞═══════════════════════════════════════════════════╡
-│ 1984   16.00       14.50   22.00    18.00   15.00 │
-│ 1985   15.00       15.00   22.00    17.00   15.00 │
-│ 1986   15.00       16.00   19.00    14.50   15.00 │
-│ .      .           .       .        .       .     │
-│ 2018   19.50       19.00   22.00    16.00   16.00 │
-│ 2019   18.00       19.00   22.00    16.00   15.00 │
-│ 2020   29.00       21.00   29.00    null    null  │
+pivoted
 ```
 
-```pycon
->>> pivoted = (autos
-...  .filter(pl.col('make').is_in(top_n['make']))
-...  .sort('year')
-...  .pivot(index='year', columns='make', values='city08', 
-...         aggregate_function='median', maintain_order=True)
-... )
+```{python}
+pivoted = (
+    autos
+    .filter(pl.col('make').is_in(top_n['make']))
+    .sort('year')
+    .set_sorted('year')
+    .pivot(index='year', columns='make', values='city08',
+          aggregate_function='median', maintain_order=True)
+)
 
->>> print(pivoted)
-shape: (37, 6)
-│ year   Chevrolet   Ford    Toyota   Dodge   GMC   │
-│ i16    f64         f64     f64      f64     f64   │
-╞═══════════════════════════════════════════════════╡
-│ 1984   16.00       14.50   22.00    18.00   15.00 │
-│ 1985   15.00       15.00   22.00    17.00   15.00 │
-│ 1986   15.00       16.00   19.00    14.50   15.00 │
-│ .      .           .       .        .       .     │
-│ 2018   19.50       19.00   22.00    16.00   16.00 │
-│ 2019   18.00       19.00   22.00    16.00   15.00 │
-│ 2020   29.00       21.00   29.00    null    null  │
+pivoted
 ```
 
 ## Melting Data
 
-```pycon
->>> print(pivoted)
-shape: (37, 6)
-│ year   Chevrolet   Ford    Toyota   Dodge   GMC   │
-│ i16    f64         f64     f64      f64     f64   │
-╞═══════════════════════════════════════════════════╡
-│ 1984   16.00       14.50   22.00    18.00   15.00 │
-│ 1985   15.00       15.00   22.00    17.00   15.00 │
-│ 1986   15.00       16.00   19.00    14.50   15.00 │
-│ .      .           .       .        .       .     │
-│ 2018   19.50       19.00   22.00    16.00   16.00 │
-│ 2019   18.00       19.00   22.00    16.00   15.00 │
-│ 2020   29.00       21.00   29.00    null    null  │
+```{python}
+pivoted
 ```
 
-```pycon
->>> print(pivoted
-...  .melt(id_vars='year', value_vars=['Chevrolet', 'Ford', 'GMC', 
-...                                    'Toyota', 'Dodge'])
-... )
-shape: (185, 3)
-│ year   variable    value │
-│ i16    str         f64   │
-╞══════════════════════════╡
-│ 1984   Chevrolet   16.00 │
-│ 1985   Chevrolet   15.00 │
-│ 1986   Chevrolet   15.00 │
-│ .      .           .     │
-│ 2018   Dodge       16.00 │
-│ 2019   Dodge       16.00 │
-│ 2020   Dodge       null  │
+```{python}
+(
+    pivoted
+    .melt(id_vars='year', value_vars=['Chevrolet',
+                                     'Ford', 'GMC',
+                                     'Toyota', 'Dodge'])
+)
 ```
 
-```pycon
->>> print(pivoted
-...  .melt(id_vars='year', value_vars=['Chevrolet', 'Ford', 'GMC', 
-...                                    'Toyota', 'Dodge'],
-...        value_name='median_city_mpg', variable_name='make')
-... )
-shape: (185, 3)
-│ year   make        median_city_mpg │
-│ i16    str         f64             │
-╞════════════════════════════════════╡
-│ 1984   Chevrolet   16.00           │
-│ 1985   Chevrolet   15.00           │
-│ 1986   Chevrolet   15.00           │
-│ .      .           .               │
-│ 2018   Dodge       16.00           │
-│ 2019   Dodge       16.00           │
-│ 2020   Dodge       null            │
+```{python}
+(
+    pivoted
+    .melt(id_vars='year', value_vars=['Chevrolet',
+                                     'Ford', 'GMC',
+                                     'Toyota', 'Dodge'],
+         value_name='median_city_mpg', variable_name='make')
+)
 ```
 
 ## Finding Duplicates
 
-```pycon
->>> print(autos
-...  .select(pl.col('highway08').is_duplicated())
-... )
-
-shape: (41_144, 1)
-│ highway08 │
-│ bool      │
-╞═══════════╡
-│ true      │
-│ true      │
-│ true      │
-│ .         │
-│ true      │
-│ true      │
-│ true      │
+```{python}
+(
+    autos
+    .select(pl.col('highway08').is_duplicated())
+)
 ```
 
-```pycon
->>> print(autos
-...  .filter(pl.col('highway08').is_duplicated())
-... )
-
-shape: (41_137, 15)
-│ year   make        model      .   createdO   is_autom   num_gear │
-│ i16    cat         cat            n          atic       s        │
-│                                   datetime   str        u8       │
-│                                   [μs]                           │
-╞══════════════════════════════════════════════════════════════════╡
-│ 1985   Alfa        Spider     .   2013-01-   false      5        │
-│        Romeo       Veloce         01                             │
-│                    2000           00:00:00                       │
-│ 1985   Ferrari     Testaros   .   2013-01-   false      5        │
-│                    sa             01                             │
-│                                   00:00:00                       │
-│ 1985   Dodge       Charger    .   2013-01-   false      5        │
-│                                   01                             │
-│                                   00:00:00                       │
-│ .      .           .          .   .          .          .        │
-│ 1993   Subaru      Legacy     .   2013-01-   true       4        │
-│                    AWD            01                             │
-│                                   00:00:00                       │
-│ 1993   Subaru      Legacy     .   2013-01-   false      5        │
-│                    AWD            01                             │
-│                                   00:00:00                       │
-│ 1993   Subaru      Legacy     .   2013-01-   true       4        │
-│                    AWD            01                             │
-│                    Turbo          00:00:00                       │
+```{python}
+(
+    autos
+    .filter(pl.col('highway08').is_duplicated())
+)
 ```
 
-```pycon
->>> print(autos
-...  .select(pl.struct(pl.col('year'), pl.col('model')))
-... )
-shape: (41_144, 1)
-│ year                        │
-│ struct[2]                   │
-╞═════════════════════════════╡
-│ {1985,"Spider Veloce 2000"} │
-│ {1985,"Testarossa"}         │
-│ {1985,"Charger"}            │
-│ .                           │
-│ {1993,"Legacy AWD"}         │
-│ {1993,"Legacy AWD"}         │
-│ {1993,"Legacy AWD Turbo"}   │
+```{python}
+(
+    autos
+    .select(pl.struct(pl.col('year'), pl.col('model')))
+)
 ```
 
-```pycon
->>> print(autos
-...  .select(pl.struct(pl.col('year'), pl.col('model')).is_duplicated())
-... )
-shape: (41_144, 1)
-│ year  │
-│ bool  │
-╞═══════╡
-│ false │
-│ false │
-│ true  │
-│ .     │
-│ true  │
-│ true  │
-│ true  │
+```{python}
+(
+    autos
+    .select(pl.struct(pl.col('year'), pl.col('model')).is_duplicated())
+)
 ```
 
-```pycon
->>> print(autos
-...  .filter(pl.struct(pl.col('year'), pl.col('model')).is_duplicated())
-...  .sort('year', 'model')
-... )
-shape: (32_294, 15)
-│ year   make    model       .   createdOn   is_automa   num_gears │
-│ i16    cat     cat             datetime[   tic         u8        │
-│                                μs]         str                   │
-╞══════════════════════════════════════════════════════════════════╡
-│ 1984   Alfa    Spider      .   2013-01-0   false       5         │
-│        Romeo   Veloce          1                                 │
-│                2000            00:00:00                          │
-│ 1984   Alfa    Spider      .   2013-01-0   false       5         │
-│        Romeo   Veloce          1                                 │
-│                2000            00:00:00                          │
-│ 1984   Dodge   Charger     .   2013-01-0   false       4         │
-│                                1                                 │
-│                                00:00:00                          │
-│ .      .       .           .   .           .           .         │
-│ 2020   BMW     M2 Compet   .   2019-04-0   true        7         │
-│                ition           2                                 │
-│                Coupe           00:00:00                          │
-│ 2020   Jeep    Gladiator   .   2019-04-0   true        8         │
-│                Pickup          2                                 │
-│                4WD             00:00:00                          │
-│ 2020   Jeep    Gladiator   .   2019-04-0   false       6         │
-│                Pickup          2                                 │
-│                4WD             00:00:00                          │
+```{python}
+(
+    autos
+    .filter(pl.struct(pl.col('year'), pl.col('model')).is_duplicated())
+    .sort('year', 'model')
+)
 ```
 
 ## Finding Missing Values
 
-```pycon
->>> missing_df = pl.DataFrame({'val': [-1.1, 0, 2.3, None, 5.7, 7]})
->>> print(missing_df)
-shape: (6, 1)
-│ val   │
-│ f64   │
-╞═══════╡
-│ -1.10 │
-│ 0.00  │
-│ 2.30  │
-│ null  │
-│ 5.70  │
-│ 7.00  │
+```{python}
+import polars as pl
 ```
 
-```pycon
->>> print(missing_df
-...  .with_columns(val2=pl.col('val')/pl.col('val'))
-... )
-shape: (6, 2)
-│ val     val2 │
-│ f64     f64  │
-╞══════════════╡
-│ -1.10   1.00 │
-│ 0.00    NaN  │
-│ 2.30    1.00 │
-│ null    null │
-│ 5.70    1.00 │
-│ 7.00    1.00 │
+```{python}
+missing_df = pl.DataFrame({'val': [-1.1, 0, 2.3, None, 5.7, 7]})
+print(missing_df)
 ```
 
-```pycon
->>> print(missing_df
-...  .with_columns(val2=pl.col('val')/pl.col('val'))
-...  .with_columns(is_null2=pl.col('val2').is_null(),
-...                is_nan2=pl.col('val2').is_nan(),
-...                is_finite2=pl.col('val2').is_finite(),
-...                interpolate=pl.col('val2').interpolate()
-...   )   
-... )
-shape: (6, 6)
-│ val     val2   is_null2   is_nan2   is_finite2   interpolate │
-│ f64     f64    bool       bool      bool         f64         │
-╞══════════════════════════════════════════════════════════════╡
-│ -1.10   1.00   false      false     true         1.00        │
-│ 0.00    NaN    false      true      false        NaN         │
-│ 2.30    1.00   false      false     true         1.00        │
-│ null    null   true       null      null         1.00        │
-│ 5.70    1.00   false      false     true         1.00        │
-│ 7.00    1.00   false      false     true         1.00        │
+```{python}
+(
+    missing_df
+    .with_columns(val2=pl.col('val')/pl.col('val'))
+)
 ```
 
-```pycon
->>> print(missing_df
-...  .with_columns(
-...                forward=pl.col('val').fill_null(strategy='forward'),
-...                backward=pl.col('val').fill_null(strategy='backward'),
-...                min=pl.col('val').fill_null(strategy='min'),
-...                max=pl.col('val').fill_null(strategy='max')
-...   )
-... )
-shape: (6, 5)
-│ val     forward   backward   min     max   │
-│ f64     f64       f64        f64     f64   │
-╞════════════════════════════════════════════╡
-│ -1.10   -1.10     -1.10      -1.10   -1.10 │
-│ 0.00    0.00      0.00       0.00    0.00  │
-│ 2.30    2.30      2.30       2.30    2.30  │
-│ null    2.30      5.70       -1.10   7.00  │
-│ 5.70    5.70      5.70       5.70    5.70  │
-│ 7.00    7.00      7.00       7.00    7.00  │
+```{python}
+(
+    missing_df
+    .with_columns(val2=pl.col('val')/pl.col('val'))
+    .with_columns(is_null2=pl.col('val2').is_null(),
+                    is_nan2=pl.col('val2').is_nan(),
+                    is_finite2=pl.col('val2').is_finite(),
+                    interpolate=pl.col('val2').interpolate()
+    )
+)
 ```
 
-```pycon
->>> print(missing_df
-...  .with_columns(
-...                mean=pl.col('val').fill_null(pl.col('val').mean()),
-...                interpolate=pl.col('val').interpolate(),
-...                nearest=pl.col('val').interpolate('nearest')
-...                )
-... )
-shape: (6, 4)
-│ val     mean    interpolate   nearest │
-│ f64     f64     f64           f64     │
-╞═══════════════════════════════════════╡
-│ -1.10   -1.10   -1.10         -1.10   │
-│ 0.00    0.00    0.00          0.00    │
-│ 2.30    2.30    2.30          2.30    │
-│ null    2.78    4.00          5.70    │
-│ 5.70    5.70    5.70          5.70    │
-│ 7.00    7.00    7.00          7.00    │
+```{python}
+(
+    missing_df
+    .with_columns(
+        forward=pl.col('val').fill_null(strategy='forward'),
+        backward=pl.col('val').fill_null(strategy='backward'),
+        min=pl.col('val').fill_null(strategy='min'),
+        max=pl.col('val').fill_null(strategy='max')
+    )
+)
 ```
 
-```pycon
->>> (missing_df
-...  .with_columns(val2=pl.col('val')/pl.col('val'))
-...  .write_csv('missing.csv')
-... )
+```{python}
+(
+    missing_df
+    .with_columns(
+        mean=pl.col('val').fill_null(pl.col('val').mean()),
+        interpolate=pl.col('val').interpolate(),
+        nearest=pl.col('val').interpolate('nearest')
+    )
+)
 ```
 
+```{python}
+(
+    missing_df
+    .with_columns(
+        val2=pl.col('val')/pl.col('val')
+    )
+    .write_csv('missing.csv')
+)
 ```
+
+```{python}
 %pfile missing.csv
-val,val2
--1.1,1.0
-0.0,NaN
-2.3,1.0
-,
-5.7,1.0
-7.0,1.0
 ```
 
-```pycon
->>> print(pl.read_csv('missing.csv'))
-shape: (6, 2)
-│ val     val2 │
-│ f64     f64  │
-╞══════════════╡
-│ -1.10   1.00 │
-│ 0.00    NaN  │
-│ 2.30    1.00 │
-│ null    null │
-│ 5.70    1.00 │
-│ 7.00    1.00 │
+```{python}
+pl.read_csv('missing.csv')
 ```
 
-```pycon
->>> print(missing_df
-...  .with_columns(val2=pl.col('val')/pl.col('val'))
-...  .to_pandas())
-   val  val2
-0 -1.1   1.0
-1  0.0   NaN
-2  2.3   1.0
-3  NaN   NaN
-4  5.7   1.0
-5  7.0   1.0
+```{python}
+(
+    missing_df
+    .with_columns(
+        val2=pl.col('val')/pl.col('val')
+    )
+    .to_pandas()
+)
 ```
 
 ## Third-Party Libraries and Missing Values
 
-```pycon
->>> X = (missing_df
-...  .with_columns(val2=pl.col('val')/pl.col('val')))
+```{python}
+X = (
+    missing_df
+    .with_columns(val2=pl.col('val')/pl.col('val'))
+)
+```
 
->>> print(X)
-shape: (6, 2)
-│ val     val2 │
-│ f64     f64  │
-╞══════════════╡
-│ -1.10   1.00 │
-│ 0.00    NaN  │
-│ 2.30    1.00 │
-│ null    null │
-│ 5.70    1.00 │
-│ 7.00    1.00 │
+```{python}
+y = pl.Series(range(6))
+y
 ```
 
 ```pycon
@@ -1434,176 +1196,137 @@ Series: '' [i64]
 ]
 ```
 
-```pycon
->>> import xgboost as xgb
->>> reg = xgb.XGBRegressor()
->>> reg.fit(X, y)
-XGBRegressor(base_score=None, booster=None, callbacks=None,
-             colsample_bylevel=None, colsample_bynode=None,
-             colsample_bytree=None, device=None,
-     early_stopping_rounds=None,
-             enable_categorical=False, eval_metric=None,
-     feature_types=None,
-             gamma=None, grow_policy=None, importance_type=None,
-             interaction_constraints=None, learning_rate=None,
-     max_bin=None,
-             max_cat_threshold=None, max_cat_to_onehot=None,
-             max_delta_step=None, max_depth=None, max_leaves=None,
-             min_child_weight=None, missing=nan,
-     monotone_constraints=None,
-             multi_strategy=None, n_estimators=None, n_jobs=None,
-             num_parallel_tree=None, random_state=None, ...)
+```{python}
+import xgboost as xgb
 ```
 
-```pycon
->>> print(reg.predict(X))
-[1.1198493e-03 1.0000179e+00 1.9999869e+00 3.0000448e+00 3.9999456e+00
- 4.9988852e+00]
+```{python}
+reg = xgb.XGBRegressor()
+reg.fit(X, y)
 ```
 
-```pycon
->>> import numpy as np
->>> np.sin(X)
-array([[-0.89120736,  0.84147098],
-       [ 0.        ,         nan],
-       [ 0.74570521,  0.84147098],
-       [        nan,         nan],
-       [-0.55068554,  0.84147098],
-       [ 0.6569866 ,  0.84147098]])
+```{python}
+reg.predict(X)
+```
+
+```{python}
+import numpy as np
+```
+
+```{python}
+np.sin(X)
 ```
 
 ## Additional Column Selectors and Missing Values
 
-```pycon
->>> import polars.selectors as cs
+```{python}
+import polars.selectors as cs
 ```
 
-```pycon
->>> print(autos
-... .select(cs.numeric().is_null().sum())
-... )
-shape: (1, 7)
-│ year   displ   cylinders   .   city08   highway08   num_gears │
-│ u32    u32     u32             u32      u32         u32       │
-╞═══════════════════════════════════════════════════════════════╡
-│ 0      204     206         .   0        0           0         │
+```{python}
+(
+    autos
+    .select(cs.numeric().is_null().sum())
+)
 ```
 
-```pycon
->>> no_dates_or_bools = (cs.all() - cs.date() - cs.boolean())
->>> print(no_dates_or_bools)
-SELECTOR
+```{python}
+no_dates_or_bools = (cs.all() - cs.date() - cs.boolean())
+no_dates_or_bools
 ```
 
-```pycon
->>> print(cs.expand_selector(autos, no_dates_or_bools))
-('year', 'make', 'model', 'displ', 'cylinders', 'trany', 'drive',
-     'VClass', 'fuelType', 'barrels08', 'city08', 'highway08', 'createdOn',
-     'is_automatic', 'num_gears')
+```{python}
+cs.expand_selector(autos, no_dates_or_bools)
 ```
 
-```pycon
->>> print(autos
-... .select(pl.col('displ').mean().over(['year', 'make']))
-... )
-shape: (41_144, 1)
-│ displ │
-│ f32   │
-╞═══════╡
-│ 2.25  │
-│ 3.57  │
-│ 3.33  │
-│ .     │
-│ 1.95  │
-│ 1.95  │
-│ 1.95  │
+```{python}
+(
+    autos
+    .select(pl.col('displ').mean().over(['year', 'make']))
+)
 ```
 
-```pycon
->>> print(autos
-... .with_columns(
-...    pl.col('displ').mean().over(['year', 'make']).alias('mean_displ'))
-... .filter(pl.col('displ').is_null())
-... .select(['year', 'make', 'displ', 'mean_displ'])
-... )
-shape: (204, 4)
-│ year   make     displ   mean_displ │
-│ i16    cat      f32     f32        │
-╞════════════════════════════════════╡
-│ 2000   Nissan   null    2.84       │
-│ 2000   Toyota   null    2.64       │
-│ 2001   Toyota   null    2.74       │
-│ .      .        .       .          │
-│ 2019   Tesla    null    null       │
-│ 2019   Tesla    null    null       │
-│ 2019   Tesla    null    null       │
+```{python}
+(
+    autos
+    .with_columns(
+        pl.col('displ').mean().over(['year', 'make']).alias('mean_displ')
+    )
+    .filter(pl.col('displ').is_null())
+    .select(['year', 'make', 'displ', 'mean_displ'])
+)
 ```
 
-```pycon
->>> mean_displ = (pl.col('displ')
-...               .mean().over(['year', 'make'])
-...               .fill_null(0)
-...               .alias('mean_displ')
-... )
->>> print(autos
-... .with_columns(mean_displ)
-... .filter(pl.col('displ').is_null())
-... .select(['year', 'make', 'displ', 'mean_displ'])
-... )
-shape: (204, 4)
-│ year   make     displ   mean_displ │
-│ i16    cat      f32     f32        │
-╞════════════════════════════════════╡
-│ 2000   Nissan   null    2.84       │
-│ 2000   Toyota   null    2.64       │
-│ 2001   Toyota   null    2.74       │
-│ .      .        .       .          │
-│ 2019   Tesla    null    0.00       │
-│ 2019   Tesla    null    0.00       │
-│ 2019   Tesla    null    0.00       │
+```{python}
+mean_displ = (
+    pl.col('displ')
+    .mean().over(['year', 'make'])
+    .fill_null(0)
+    .alias('mean_displ')
+)
 ```
 
-```pycon
->>> print(autos
-... .with_columns(pl.col('displ').fill_null(mean_displ))
-... .select(['year', 'make', 'model', 'displ'])
-... )
-shape: (41_144, 4)
-│ year   make         model                displ │
-│ i16    cat          cat                  f32   │
-╞════════════════════════════════════════════════╡
-│ 1985   Alfa Romeo   Spider Veloce 2000   2.00  │
-│ 1985   Ferrari      Testarossa           4.90  │
-│ 1985   Dodge        Charger              2.20  │
-│ .      .            .                    .     │
-│ 1993   Subaru       Legacy AWD           2.20  │
-│ 1993   Subaru       Legacy AWD           2.20  │
-│ 1993   Subaru       Legacy AWD Turbo     2.20  │
+```{python}
+(
+    autos
+    .with_columns(mean_displ)
+    .filter(pl.col('displ').is_null())
+    .select(['year', 'make', 'displ', 'mean_displ'])
+)
+```
+
+```{python}
+(
+    autos
+    .with_columns(pl.col('displ').fill_null(mean_displ))
+    .select(['year', 'make', 'model', 'displ'])
+)
+```
+
+```{python}
+import polars as pl 
+path = 'data/vehicles.csv'
+raw = pl.read_csv(path, null_values=['NA'])
+
+def tweak_auto(df):
+   cols = ['year', 'make', 'model', 'displ', 'cylinders', 'trany', 
+          'drive', 'VClass', 'fuelType', 'barrels08', 'city08', 
+          'highway08', 'createdOn']
+   return (df
+    .select(pl.col(cols))
+    .with_columns(pl.col('year').cast(pl.Int16),
+       pl.col(['cylinders', 'highway08', 'city08']).cast(pl.UInt8),
+        pl.col(['displ', 'barrels08']).cast(pl.Float32),
+        pl.col(['make', 'model', 'VClass', 'drive', 
+                'fuelType']).cast(pl.Categorical),
+        pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
+        is_automatic=pl.col('trany')                    
+               .str.contains('Automatic')
+             .fill_null('Automatic'),
+      num_gears=pl.col('trany')
+              .str.extract(r'(\d+)')
+              .cast(pl.UInt8)
+              .fill_null(6))    
+     ) 
+autos = tweak_auto(raw)
 ```
 
 ## Map and Apply
 
-```pycon
->>> def debug(thing):
-...   print(type(thing))
-...   return thing
-
->>> print(autos
-...  .select(pl.col('make').map_batches(debug))
-... )
-<class 'polars.series.series.Series'>
-shape: (41_144, 1)
-│ make       │
-│ cat        │
-╞════════════╡
-│ Alfa Romeo │
-│ Ferrari    │
-│ Dodge      │
-│ .          │
-│ Subaru     │
-│ Subaru     │
-│ Subaru     │
+```{python}
+def debug(thing):
+    print(type(thing))
+    return thing
 ```
+
+```{python}
+(
+    autos
+    .select(pl.col('make').map_batches(debug))
+)
+```
+
+## STOPPED HERE
 
 ```pycon
 >>> import numpy as np
