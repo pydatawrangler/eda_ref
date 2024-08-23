@@ -1,0 +1,10 @@
+name: using-matplotlib23
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - matplotlib
+  - ipympl
+  - pandas
+  - jupyterlab
+
