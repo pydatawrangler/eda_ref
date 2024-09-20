@@ -1,0 +1,5833 @@
+---
+title: Getting Started with Polars
+format:
+    html:
+        self-contained: true
+        number-sections: true
+        toc: true
+---
+
+## Introduction 
+
+Github repo for the Effective Polars Code is here:
+https://github.com/mattharrison/effective_polars_book
+
+Data Sets are on Github at this location:
+https://github.com/mattharrison/datasets/tree/master/data
+
+
+## Installing Polars
+```{python}
+import polars as pl
+pl.__version__
+```
+
+## Polars Data Structures
+
+## Laziness
+
+```{python}
+df_ops = set(x for x in dir(pl.DataFrame()) if not x.startswith('_'))
+lazy_ops = set(x for x in dir(pl.LazyFrame()) if not x.startswith('_'))
+print(sorted(df_ops - lazy_ops))
+```
+
+```{python}
+print(sorted(lazy_ops & df_ops))
+```
+
+## Contexts & Expressions
+
+```{python}
+col = pl.col('sample')
+col_ops = set(x for x in dir(col) if not x.startswith('_'))
+print(sorted(col_ops))
+
+```
+
+```{python}
+(col
+ .cast(pl.Int32)
+ .fill_null(col.mean())
+ .clip(upper_bound=100)
+ .sample(10)
+ .mean()
+)
+
+```
+
+```{python}
+ex1 = col.cast(pl.Int64)
+ex2 = ex1.fill_null(col.cast(pl.Int64))
+ex3 = ex2.clip(upper_bound=100)
+ex4 = ex3.sample(10)
+ex5 = ex4.mean()
+```
+
+```{python}
+pl.col.a_column
+```
+
+## Reading CSV Files
+
+```{python}
+url = 'data/vehicles.csv.zip'
+import zipfile
+with zipfile.ZipFile(url) as z:
+    z.extractall('data/')
+path = 'data/vehicles.csv'
+df = pl.read_csv(path, null_values=['NA'])
+```
+
+```{python}
+print(df)
+
+```
+
+## Lazy CSV Reading
+
+```{python}
+lazy = pl.scan_csv(path, null_values=['NA'])
+print(lazy)
+
+```
+
+```{python}
+print(lazy
+  .filter((pl.col('year') >= 1990) & (pl.col('year') < 2000))
+  .select(['year', 'make', 'model'])
+)
+
+```
+
+```{python}
+print(lazy
+  .filter((pl.col('year') >= 1990) & (pl.col('year') < 2000))
+  .select(['year', 'make', 'model'])
+  .explain()
+)
+
+```
+
+## Data Type Inference and Manual Overrides
+
+```{python}
+print(df.dtypes)
+
+```
+
+```{python}
+print(df.schema)
+
+```
+
+```{python}
+cols = ['year', 'make', 'model', 'displ', 'cylinders', 'trany', 'drive',
+        'VClass', 'fuelType', 'barrels08', 'city08', 'highway08',
+        'createdOn']
+```
+
+```{python}
+print(df.select(cols))
+
+```
+
+```{python}
+print(df.select(pl.col(cols)))
+
+```
+
+```{python}
+print(df
+  .select(pl.col(cols))
+  .select(pl.col(pl.Int64))
+  .describe()
+)
+
+```
+
+```{python}
+print(df
+  .select(pl.col(cols))
+  .with_columns(pl.col('year').cast(pl.Int16),
+                pl.col('cylinders').cast(pl.UInt8),
+                pl.col('highway08').cast(pl.UInt8),
+                pl.col('city08').cast(pl.UInt8))
+)
+
+```
+
+```{python}
+print(df
+  .select(pl.col(cols))
+  .with_columns(pl.col('year').cast(pl.Int8))
+)
+
+```
+
+## Automatic Type Shrinking
+
+```{python}
+print(df
+  .select(pl.col(cols).shrink_dtype())
+)
+
+```
+
+## Float Conversion
+
+```{python}
+print(df
+  .select(pl.col(cols))
+  .with_columns(pl.col('year').cast(pl.Int16),
+                pl.col('cylinders').cast(pl.UInt8),
+                pl.col('highway08').cast(pl.UInt8),
+                pl.col('city08').cast(pl.UInt8))
+  .select(pl.col(pl.Float64))
+  .sample(n=10, seed=42)
+)
+
+```
+
+```{python}
+print(df
+  .select(pl.col(cols))
+  .with_columns(pl.col('year').cast(pl.Int16),
+                pl.col('cylinders').cast(pl.UInt8),
+                pl.col('highway08').cast(pl.UInt8),
+                pl.col('city08').cast(pl.UInt8),
+                pl.col('displ').cast(pl.Float32),
+                pl.col('barrels08').cast(pl.Float32),
+                )
+)
+
+```
+
+## Extracting Numbers from Strings
+
+```{python}
+print(df
+ .select('trany')
+)
+
+```
+
+```{python}
+print(df
+ .select('trany',
+         pl.col('trany')
+              .str.to_lowercase()
+              .str.contains('automatic') 
+              .alias('automatic'))         
+)
+
+```
+
+```{python}
+print(df
+ .with_columns('trany',
+         pl.col('trany')
+              .str.to_lowercase()
+              .str.contains('automatic') 
+              .alias('is_automatic'))         
+)
+
+```
+
+```{python}
+print(df
+ .with_columns('trany',
+         is_automatic=pl.col('trany')
+              .str.to_lowercase()
+              .str.contains('automatic')) 
+)
+
+```
+
+```{python}
+print(df
+ .group_by('trany')
+ .len()
+ .sort('len', descending=True)          
+)
+
+```
+
+```{python}
+print(df
+ .select(pl.col('trany')
+           .value_counts(sort=True))         
+ .unnest('trany')
+)
+
+```
+
+```{python}
+print(df
+  .filter(pl.col('trany').is_null())
+  .select('year', 'make', 'model', 'VClass')          
+)          
+
+```
+
+```{python}
+print(df
+ .select('trany',
+    is_automatic=pl.col('trany')
+              .str.contains('Automatic')
+              .fill_null(True)                 
+              )  
+)
+
+```
+
+```{python}
+print(df
+ .select(num_gears=pl.col('trany')
+            .str.extract(r'(\d+)')
+            .cast(pl.UInt8))
+)          
+
+```
+
+```{python}
+print(df
+ .select(num_gears=pl.col('trany')
+            .str.extract(r'(\d+)')
+            .cast(pl.UInt8)
+            .unique())
+)          
+
+```
+
+```{python}
+print(df
+ .select(num_gears=pl.col('trany')
+            .str.extract(r'(\d+)')
+            .cast(pl.UInt8))
+ .filter(pl.col('num_gears').is_null())          
+)          
+
+```
+
+```{python}
+print(df
+ .with_columns(
+    is_automatic=pl.col('trany')
+              .str.contains('Automatic')
+              .fill_null(True),             
+    num_gears=pl.col('trany')
+            .str.extract(r'(\d+)')
+            .cast(pl.UInt8)
+            .fill_null(6)
+              ) 
+)
+
+```
+
+## String Columns
+
+```{python}
+print(df
+  .select(pl.col(cols))
+  .with_columns(pl.col('year').cast(pl.Int16),
+                pl.col('cylinders').cast(pl.UInt8),
+                pl.col('highway08').cast(pl.UInt8),
+                pl.col('city08').cast(pl.UInt8),
+                pl.col('displ').cast(pl.Float32),
+                pl.col('barrels08').cast(pl.Float32),
+                )
+  .select(pl.col(pl.String))
+)
+
+```
+
+```{python}
+print(df
+  .select(pl.col(cols))
+  .with_columns(pl.col('year').cast(pl.Int16),
+       pl.col(['cylinders', 'highway08', 'city08']).cast(pl.UInt8),
+       pl.col(['displ', 'barrels08']).cast(pl.Float32),
+       pl.col(['make', 'model', 'VClass', 'drive', 
+               'fuelType']).cast(pl.Categorical),
+       )
+)
+
+```
+
+```{python}
+print(df
+  .select(pl.col(cols))
+  .with_columns(pl.col('year').cast(pl.Int16),
+       pl.col(['cylinders', 'highway08', 'city08']).cast(pl.UInt8),
+       pl.col(['displ', 'barrels08']).cast(pl.Float32),
+       pl.col(['make', 'model', 'VClass', 'drive', 
+               'fuelType']).cast(pl.Categorical),
+       is_automatic=pl.col('trany')
+              .str.contains('Automatic')
+              .fill_null(True),
+       num_gears=pl.col('trany')
+             .str.extract(r'(\d+)')
+             .cast(pl.UInt8)
+             .fill_null(6))                      
+)
+
+
+```
+
+## Parsing Dates
+
+```{python}
+print(df
+  .select(pl.col(cols))
+  .with_columns(pl.col('year').cast(pl.Int16),
+       pl.col(['cylinders', 'highway08', 'city08']).cast(pl.UInt8),
+       pl.col(['displ', 'barrels08']).cast(pl.Float32),
+       pl.col(['make', 'model', 'VClass', 'drive', 
+               'fuelType']).cast(pl.Categorical),
+       is_automatic=pl.col('trany')
+              .str.contains('Automatic')
+              .fill_null(True),
+       num_gears=pl.col('trany')
+             .str.extract(r'(\d+)')
+             .cast(pl.UInt8)
+             .fill_null(6))    
+  .select(pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'))                    
+)
+
+
+```
+
+```{python}
+def tweak_auto(df):
+   cols = ['year', 'make', 'model', 'displ', 'cylinders', 'trany', 
+          'drive', 'VClass', 'fuelType', 'barrels08', 'city08', 
+          'highway08', 'createdOn']
+   return (df
+    .select(pl.col(cols))
+    .with_columns(pl.col('year').cast(pl.Int16),
+       pl.col(['cylinders', 'highway08', 'city08']).cast(pl.UInt8),
+       pl.col(['displ', 'barrels08']).cast(pl.Float32),
+       pl.col(['make', 'model', 'VClass', 'drive', 
+               'fuelType']).cast(pl.Categorical),
+       pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
+       is_automatic=pl.col('trany')                    
+              .str.contains('Automatic')
+              .fill_null('Automatic'),
+       num_gears=pl.col('trany')
+             .str.extract(r'(\d+)')
+             .cast(pl.UInt8)
+             .fill_null(6))    
+    )
+```
+
+```{python}
+print(tweak_auto(df))
+
+```
+
+```{python}
+tweak_auto(df).estimated_size(unit='mb')
+# 2.446714401245117
+```
+
+```{python}
+df.select(cols).estimated_size(unit='mb')
+# 5.914606094360352
+```
+
+## Summary Statistics
+
+```{python}
+print(tweak_auto(df).describe())
+
+```
+
+```{python}
+import polars.selectors as cs
+print(tweak_auto(df)
+ .select(cs.numeric())
+ .corr()
+ .pipe(lambda df_: df_.insert_column(0, pl.Series('names', df_.columns)))
+)
+
+```
+
+## Being Lazy
+
+```{python}
+import polars as pl
+path = 'data/vehicles.csv'
+lazy = pl.scan_csv(path, null_values=['NA'])
+
+def tweak_auto(df):
+   cols = ['year', 'make', 'model', 'displ', 'cylinders', 'trany', 
+          'drive', 'VClass', 'fuelType', 'barrels08', 'city08', 
+          'highway08', 'createdOn']
+   return (df
+    .select(pl.col(cols))
+    .with_columns(pl.col('year').cast(pl.Int16),
+       pl.col(['cylinders', 'highway08', 'city08']).cast(pl.UInt8),
+       pl.col(['displ', 'barrels08']).cast(pl.Float32),
+       pl.col(['make', 'model', 'VClass', 'drive', 
+               'fuelType']).cast(pl.Categorical),
+       pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
+       is_automatic=pl.col('trany')                    
+              .str.contains('Automatic')
+              .fill_null(True),
+       num_gears=pl.col('trany')
+             .str.extract(r'(\d+)')
+             .cast(pl.UInt8)
+             .fill_null(6))    
+    )
+                      
+print(tweak_auto(lazy).collect())
+
+```
+
+## Chapter Functions and Methods
+
+## Summary
+
+## Exercises
+
+# Data Manipulation with Polars Using the Fuel Economy Dataset
+
+## Introduction
+
+## Getting the Data
+
+```{python}
+import polars as pl 
+path = 'data/vehicles.csv'
+raw = pl.read_csv(path, null_values=['NA'])
+
+def tweak_auto(df):
+   cols = ['year', 'make', 'model', 'displ', 'cylinders', 'trany', 
+          'drive', 'VClass', 'fuelType', 'barrels08', 'city08', 
+          'highway08', 'createdOn']
+   return (df
+    .select(pl.col(cols))
+    .with_columns(pl.col('year').cast(pl.Int16),
+       pl.col(['cylinders', 'highway08', 'city08']).cast(pl.UInt8),
+       pl.col(['displ', 'barrels08']).cast(pl.Float32),
+       pl.col(['make', 'model', 'VClass', 'drive', 
+               'fuelType']).cast(pl.Categorical),
+       pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
+       is_automatic=pl.col('trany')                    
+              .str.contains('Automatic')
+              .fill_null('Automatic'),
+       num_gears=pl.col('trany')
+             .str.extract(r'(\d+)')
+             .cast(pl.UInt8)
+             .fill_null(6))    
+    )
+
+autos = tweak_auto(raw)
+```
+
+```{python}
+print(autos)
+
+```
+
+## Adding Columns
+
+```{python}
+print(autos
+  .select(pl.col(['highway08', 'city08']),
+          mpg_ratio=(pl.col('highway08') / pl.col('city08')))
+          
+ )
+
+```
+
+```{python}
+print(autos
+  .with_columns(mpg_ratio=pl.col('highway08') / pl.col('city08'))
+ )
+
+```
+
+## Simulating the Index
+
+```{python}
+print(autos
+ .with_row_index('index')
+)          
+
+```
+
+## Removing Columns
+
+```{python}
+print(autos
+ .drop('createdOn')
+ .columns
+)
+['year', 'make', 'model', 'displ', 'cylinders', 'trany', 'drive',
+     'VClass', 'fuelType', 'barrels08', 'city08', 'highway08',
+     'is_automatic', 'num_gears']
+```
+
+```{python}
+final_cols = ['year', 'make', 'model', 'displ', 'cylinders', 'trany', 
+  'drive', 'VClass', 'fuelType', 'barrels08', 'city08', 'highway08', 
+  'is_automatic', 'num_gears']
+
+print(autos
+ .select(final_cols)
+)
+
+
+```
+
+```{python}
+print(autos
+  .select(pl.all()
+           .exclude(['createdOn', 'barrels08'])
+           .name.suffix('_auto'))
+)
+
+```
+
+## Renaming Columns
+
+```{python}
+final_cols = ['year', 'make', 'model', 'city_mpg', 'highway_mpg']
+print(autos
+ .with_columns(pl.col('city08').alias('city_mpg'),
+               highway_mpg=pl.col('highway08'))
+ .select(final_cols)
+ )
+
+
+```
+
+```{python}
+print(autos
+ .with_columns(highway_mpg=pl.col('highway08'),
+               pl.col('city08').alias('city_mpg'))
+ .select(final_cols)
+ )
+# Traceback (most recent call last)
+#   ...
+# SyntaxError: positional argument follows keyword argument
+#      (3173993774.py, line 3)
+```
+
+```{python}
+final_cols = ['year', 'make', 'model', 'city_mpg', 'highway_mpg']
+print(autos
+ .rename({'city08':'city_mpg',
+          'highway08':'highway_mpg'})
+ .select(final_cols)
+ )
+
+
+```
+
+## Joining DataFrames
+
+```{python}
+trucks = pl.DataFrame(
+   {'make': ['Ford', 'Tesla', 'Chevy', 'Custom', 'Ford'],
+    'model': ['F150', 'Cybertruck', 'Silverado', 'HotRod', 'F250'],
+    'year': [2018, 2024, 2019, 1967, 2017],
+    'city_mpg': [19, None, 17, 12, 18],
+   })
+
+print(trucks)
+
+```
+
+```{python}
+manufacturer = pl.DataFrame(
+   {'name': ['Ford', 'Tesla', 'Chevy', 'Toyota'],
+    'country': ['USA', 'USA', 'USA', 'Japan'],
+    'founded': [1903, 2003, 1911, 1937],
+    'employees': [199_000, 48_000, 225_000, 370_000],
+    'vehicles': [80, 3, 45, 30],
+    })
+
+print(manufacturer)
+
+```
+
+```{python}
+print(manufacturer.join(trucks, how='left'))
+# Traceback (most recent call last)
+#   ...
+# ValueError: must specify `on` OR `left_on` and `right_on`
+```
+
+```{python}
+print(manufacturer.join(trucks, how='left', left_on='name', 
+                        right_on='make'))
+
+```
+
+## Right Joins
+
+```{python}
+print(trucks.join(manufacturer, how='left', right_on='name', 
+                  left_on='make'))
+
+```
+
+## Inner Joins
+
+```{python}
+print(manufacturer.join(trucks, left_on='name', right_on='make'))
+
+```
+
+## Outer Joins
+
+```{python}
+print(manufacturer.join(trucks, how='outer', left_on='name', 
+                        right_on='make'))
+
+```
+
+## Semi Joins
+
+```{python}
+print(manufacturer.join(trucks, how='semi', left_on='name', 
+                        right_on='make'))
+
+```
+
+## Cross Joins
+
+```{python}
+sizes = pl.DataFrame({'size': ['small', 'medium', 'large'],})
+colors = pl.DataFrame({'color': ['red', 'green', ],})
+print(sizes.join(colors, how='cross'))
+
+```
+
+## Anti Joins
+
+```{python}
+print(manufacturer.join(trucks, how='anti', left_on='name', 
+                        right_on='make'))
+
+```
+
+```{python}
+print(trucks.join(manufacturer, how='anti', right_on='name', 
+                  left_on='make'))
+
+```
+
+## Join Validation
+
+```{python}
+print(manufacturer.join(trucks, left_on='name', right_on='make', 
+                        validate='1:1'))
+# Traceback (most recent call last)
+#   ...
+# ComputeError: the join keys did not fulfil 1:1 validation
+```
+
+```{python}
+print(manufacturer.join(trucks, left_on='name', right_on='make', 
+                        validate='m:1'))
+# Traceback (most recent call last)
+#   ...
+# ComputeError: the join keys did not fulfil m:1 validation
+```
+
+```{python}
+print(manufacturer.join(trucks, left_on='name', right_on='make',
+                        validate='1:m'))
+
+```
+
+```{python}
+print(trucks
+  .filter(pl.col('make').is_duplicated())
+)
+
+```
+
+## Speeding up Joins with Sorting
+
+```{python}
+url = 'https://data.openei.org/files/907/'\
+   '2016cityandcountylightdutyvehicleinventory.xlsb'
+inv_raw = pl.read_excel(url, engine='calamine', 
+    read_options=dict(header_row=1), sheet_name='City')
+```
+
+```{python}
+print(inv_raw
+  .select(['state_abbr', 'gisjoin', 'city_id', 'city_name',
+           'fuel_type_org', 'fuel_type', 'class', '2000', '2001'])
+)
+
+```
+
+```{python}
+years = [str(i) for i in range(2000, 2019)]
+
+inv_yr = (inv_raw
+    .with_columns(
+        [pl.col(year).replace('', 0).cast(pl.Float32) 
+         for year in years]) 
+    .melt(variable_name='year', value_vars=years,
+          id_vars=['state_abbr', 'gisjoin', 'city_id', 'city_name',
+                   'fuel_type_org', 'fuel_type', 'class',]
+    )
+    .select('state_abbr', 'city_name', 'fuel_type_org', 'fuel_type', 'class', 
+            year=pl.col('year').cast(pl.Int16),
+            percent=pl.col('value')*100)
+)
+```
+
+```{python}
+print(inv_yr)
+
+```
+
+```{python}
+# make simple cat
+gas_mapping = {
+    'Diesel': 'Diesel vehicle',
+    'Regular': 'Gasoline vehicle',
+    'Premium': 'Gasoline vehicle',
+    'Midgrade': 'Gasoline vehicle',
+    'Gasoline or E85': 'Flex fuel vehicle',
+    'Premium or E85': 'Flex fuel vehicle',
+    'Premium Gas or Electricity': 'Plug-in hybrid electric vehicle',
+    'Regular Gas or Electricity': 'Plug-in hybrid electric vehicle',
+    'Premium and Electricity': 'Hybrid electric vehicle',
+    'Regular Gas and Electricity': 'Hybrid electric vehicle',
+    'Electricity': 'Electric vehicle',
+    'Gasoline or natural gas': 'Other/Unknown',
+    'Gasoline or propane': 'Other/Unknown',
+    'CNG': 'Other/Unknown',
+
+}
+agg_yr = (autos
+ .with_columns(VClass=pl.col('VClass').cast(pl.String))
+ .with_columns(
+    simple_class=pl.when(pl.col('VClass')
+                         .str.to_lowercase().str.contains('car'))
+                        .then(pl.lit('Car'))
+                   .when(pl.col('VClass')
+                         .str.to_lowercase().str.contains('truck'))
+                        .then(pl.lit('Truck'))
+                   .otherwise(pl.lit('Other')),
+    fuel_type=pl.col('fuelType').cast(pl.String)
+                .replace(gas_mapping, default='Missing'))
+ .group_by(['year', 'simple_class', 'fuel_type'])
+ .agg(pl.col('city08').mean().alias('mean_mpg'))                                    
+ )
+```
+
+```{python}
+print(agg_yr)
+
+```
+
+```{python}
+print (agg_yr
+ .join(inv_yr, left_on=['year', 'simple_class', 'fuel_type'], 
+       right_on=['year', 'class', 'fuel_type'])
+)
+
+```
+
+```{python}
+agg_yr_shuf = agg_yr.sample(len(agg_yr), with_replacement=False, seed=42)      
+inv_yr_shuf = inv_yr.sample(len(inv_yr), with_replacement=False, seed=42)
+```
+
+```{python}
+%%timeit
+(agg_yr_shuf
+ .join(inv_yr_shuf, left_on=['year', 'simple_class', 'fuel_type'], 
+       right_on=['year', 'class', 'fuel_type'])
+)
+```
+
+```{python}
+# sort by year
+agg_yr_sort = agg_yr.sort('year')
+inv_yr_sort = inv_yr.sort('year')
+```
+
+```{python}
+%%timeit
+(agg_yr_sort
+ .join(inv_yr_sort, left_on=['year', 'simple_class', 'fuel_type'], 
+       right_on=['year', 'class', 'fuel_type'])
+)
+```
+
+```{python}
+# sort by year and class
+agg_yr_sort2 = agg_yr.sort('year', 'simple_class', 'fuel_type')
+inv_yr_sort2 = inv_yr.sort('year', 'class', 'fuel_type')
+```
+
+```{python}
+%%timeit
+(agg_yr_sort2
+ .join(inv_yr_sort2, left_on=['year', 'simple_class', 'fuel_type'], 
+       right_on=['year', 'class', 'fuel_type'])
+)
+```
+
+```{python}
+with pl.StringCache():
+    agg_yr_cat = agg_yr_sort2.with_columns(
+        pl.col('simple_class', 'fuel_type').cast(pl.Categorical))
+    inv_yr_cat = inv_yr_sort2.with_columns(
+        pl.col('class', 'fuel_type').cast(pl.Categorical))
+```
+
+```{python}
+%%timeit
+(agg_yr_cat
+ .join(inv_yr_cat, left_on=['year', 'simple_class', 'fuel_type'], 
+       right_on=['year', 'class', 'fuel_type'])
+)
+```
+
+```{python}
+agg_pd = agg_yr_sort2.to_pandas().sort_values(['year', 'simple_class', 
+                                               'fuel_type'])
+inv_pd = inv_yr_sort2.to_pandas().sort_values(['year', 'class', 
+                                               'fuel_type'])
+```
+
+```{python}
+%%timeit
+(agg_pd
+ .merge(inv_pd, left_on=['year', 'simple_class', 'fuel_type'], 
+        right_on=['year', 'class', 'fuel_type'])
+)
+```
+
+## Visualizing the Join
+
+```{python}
+print(agg_yr
+ .join(inv_yr, left_on=['year', 'simple_class', 'fuel_type'], 
+       right_on=['year', 'class', 'fuel_type'])
+ .filter(city_name='Salt Lake City')
+ .pivot(index='year', columns='simple_class', values='mean_mpg', 
+        aggregate_function='mean')
+)
+
+```
+
+```{python}
+(agg_yr
+ .join(inv_yr, left_on=['year', 'simple_class', 'fuel_type'], 
+       right_on=['year', 'class', 'fuel_type'])
+ .filter(city_name='Salt Lake City')
+ .pivot(index='year', columns='simple_class', values='mean_mpg', 
+        aggregate_function='mean')
+ .plot.line(x='year', y=['Car', 'Truck'], 
+            title='Salt Lake City Vehicle Mileage')
+)
+
+
+
+
+
+# :NdOverlay   [Variable]
+#    :Curve   [year]   (value)
+```
+
+## Adding Rows
+
+```{python}
+print(autos
+ .tail(10)
+ .vstack(autos.head(10))
+)
+
+```
+
+## Reshaping and Pivoting Data
+
+```{python}
+top_n = (autos
+ .group_by('make')
+ .agg(pl.col('city08').count())
+ .sort('city08')
+ .tail(5)
+)
+
+print(top_n)
+
+```
+
+```{python}
+print(autos
+ .filter(pl.col('make').is_in(top_n['make']))     
+ .pivot(index='year', columns='make', values='city08', 
+        aggregate_function='median')
+)
+
+```
+
+```{python}
+pivoted = (autos
+ .filter(pl.col('make').is_in(top_n['make']))     
+ .pivot(index='year', columns='make', values='city08', 
+        aggregate_function='median')
+ .sort('year')
+)
+
+print(pivoted)
+
+```
+
+```{python}
+pivoted = (autos
+ .filter(pl.col('make').is_in(top_n['make']))
+ .sort('year')
+ .set_sorted('year')
+ .pivot(index='year', columns='make', values='city08', 
+        aggregate_function='median')
+)
+
+print(pivoted)
+
+```
+
+```{python}
+pivoted = (autos
+ .filter(pl.col('make').is_in(top_n['make']))
+ .sort('year')
+ .pivot(index='year', columns='make', values='city08', 
+        aggregate_function='median', maintain_order=True)
+)
+
+print(pivoted)
+
+```
+
+## Melting Data
+
+```{python}
+print(pivoted)
+
+```
+
+```{python}
+print(pivoted
+ .melt(id_vars='year', value_vars=['Chevrolet', 'Ford', 'GMC', 
+                                   'Toyota', 'Dodge'])
+)
+
+```
+
+```{python}
+print(pivoted
+ .melt(id_vars='year', value_vars=['Chevrolet', 'Ford', 'GMC', 
+                                   'Toyota', 'Dodge'],
+       value_name='median_city_mpg', variable_name='make')
+)
+
+```
+
+## Finding Duplicates
+
+```{python}
+print(autos
+ .select(pl.col('highway08').is_duplicated())
+)
+
+```
+
+```{python}
+print(autos
+ .filter(pl.col('highway08').is_duplicated())
+)
+
+```
+
+```{python}
+print(autos
+ .select(pl.struct(pl.col('year'), pl.col('model')))
+)
+
+```
+
+```{python}
+print(autos
+ .select(pl.struct(pl.col('year'), pl.col('model')).is_duplicated())
+)
+
+```
+
+```{python}
+print(autos
+ .filter(pl.struct(pl.col('year'), pl.col('model')).is_duplicated())
+ .sort('year', 'model')
+)
+
+```
+
+## Finding Missing Values
+
+```{python}
+missing_df = pl.DataFrame({'val': [-1.1, 0, 2.3, None, 5.7, 7]})
+print(missing_df)
+
+```
+
+```{python}
+print(missing_df
+ .with_columns(val2=pl.col('val')/pl.col('val'))
+)
+
+```
+
+```{python}
+print(missing_df
+ .with_columns(val2=pl.col('val')/pl.col('val'))
+ .with_columns(is_null2=pl.col('val2').is_null(),
+               is_nan2=pl.col('val2').is_nan(),
+               is_finite2=pl.col('val2').is_finite(),
+               interpolate=pl.col('val2').interpolate()
+  )   
+)
+
+```
+
+```{python}
+print(missing_df
+ .with_columns(
+               forward=pl.col('val').fill_null(strategy='forward'),
+               backward=pl.col('val').fill_null(strategy='backward'),
+               min=pl.col('val').fill_null(strategy='min'),
+               max=pl.col('val').fill_null(strategy='max')
+  )
+)
+
+```
+
+```{python}
+print(missing_df
+ .with_columns(
+               mean=pl.col('val').fill_null(pl.col('val').mean()),
+               interpolate=pl.col('val').interpolate(),
+               nearest=pl.col('val').interpolate('nearest')
+               )
+)
+
+```
+
+```{python}
+(missing_df
+ .with_columns(val2=pl.col('val')/pl.col('val'))
+ .write_csv('missing.csv')
+)
+```
+
+```
+%pfile missing.csv
+val,val2
+-1.1,1.0
+0.0,NaN
+2.3,1.0
+,
+5.7,1.0
+7.0,1.0
+```
+
+```{python}
+print(pl.read_csv('missing.csv'))
+
+```
+
+```{python}
+print(missing_df
+ .with_columns(val2=pl.col('val')/pl.col('val'))
+ .to_pandas())
+
+```
+
+## Third-Party Libraries and Missing Values
+
+```{python}
+X = (missing_df
+ .with_columns(val2=pl.col('val')/pl.col('val')))
+
+print(X)
+
+```
+
+```{python}
+y = pl.Series(range(6))
+print(y)
+
+```
+
+```{python}
+import xgboost as xgb
+reg = xgb.XGBRegressor()
+reg.fit(X, y)
+# XGBRegressor(base_score=None, booster=None, callbacks=None,
+#              colsample_bylevel=None, colsample_bynode=None,
+#              colsample_bytree=None, device=None,
+#      early_stopping_rounds=None,
+#              enable_categorical=False, eval_metric=None,
+#      feature_types=None,
+#              gamma=None, grow_policy=None, importance_type=None,
+#              interaction_constraints=None, learning_rate=None,
+#      max_bin=None,
+#              max_cat_threshold=None, max_cat_to_onehot=None,
+#              max_delta_step=None, max_depth=None, max_leaves=None,
+#              min_child_weight=None, missing=nan,
+#      monotone_constraints=None,
+#              multi_strategy=None, n_estimators=None, n_jobs=None,
+#              num_parallel_tree=None, random_state=None, ...)
+```
+
+```{python}
+print(reg.predict(X))
+
+```
+
+```{python}
+import numpy as np
+np.sin(X)
+
+```
+
+## Additional Column Selectors and Missing Values
+
+```{python}
+import polars.selectors as cs
+```
+
+```{python}
+print(autos
+.select(cs.numeric().is_null().sum())
+)
+
+```
+
+```{python}
+no_dates_or_bools = (cs.all() - cs.date() - cs.boolean())
+print(no_dates_or_bools)
+# SELECTOR
+```
+
+```{python}
+print(cs.expand_selector(autos, no_dates_or_bools))
+
+```
+
+```{python}
+print(autos
+.select(pl.col('displ').mean().over(['year', 'make']))
+)
+
+```
+
+```{python}
+print(autos
+.with_columns(
+   pl.col('displ').mean().over(['year', 'make']).alias('mean_displ'))
+.filter(pl.col('displ').is_null())
+.select(['year', 'make', 'displ', 'mean_displ'])
+)
+
+```
+
+```{python}
+mean_displ = (pl.col('displ')
+              .mean().over(['year', 'make'])
+              .fill_null(0)
+              .alias('mean_displ')
+)
+print(autos
+.with_columns(mean_displ)
+.filter(pl.col('displ').is_null())
+.select(['year', 'make', 'displ', 'mean_displ'])
+)
+
+```
+
+```{python}
+print(autos
+.with_columns(pl.col('displ').fill_null(mean_displ))
+.select(['year', 'make', 'model', 'displ'])
+)
+
+```
+
+## Map and Apply
+
+```{python}
+def debug(thing):
+  print(type(thing))
+  return thing
+
+print(autos
+ .select(pl.col('make').map_batches(debug))
+)
+
+```
+
+```{python}
+import numpy as np
+def standardize(arr_pl):
+    arr = arr_pl.to_numpy()
+    return (arr - np.mean(arr)) / np.std(arr)
+
+print(autos
+ .select(city08_standardized=pl.col('city08').map_batches(standardize))
+)
+
+```
+
+```{python}
+def standardize_pl(col):
+  return (col - col.mean()) / col.std()
+
+print(autos
+ .select(city08_standardized=standardize_pl(pl.col('city08')))
+)
+
+```
+
+## Chapter Functions and Methods
+
+## Summary
+
+## Exercises
+
+# String Manipulation
+
+## Twitter Data
+
+```{python}
+url = 'https://github.com/mattharrison/datasets/raw/' \
+  'master/data/__mharrison__2020-2021.csv'
+import polars as pl
+raw = pl.read_csv(url)
+print(raw)
+
+```
+
+```{python}
+def tweak_twit(df):
+    return (df
+       .select(['Tweet id', 'Tweet permalink', 'Tweet text', 'time', 
+                'impressions', 'engagements', 'engagement rate',
+                'retweets', 'replies', 'likes', 'user profile clicks'])
+    )
+
+twit = tweak_twit(raw)
+print(twit)
+
+```
+
+## Validating the Data
+
+```{python}
+col = pl.col('Tweet permalink')
+print([m for m in dir(col.str)
+    if not m.startswith('_')])
+
+```
+
+```{python}
+print(sorted([m for m in 
+      set(dir(col.str)) & set(dir(''))
+      if not m.startswith('_')]))           
+
+```
+
+```{python}
+print(sorted([m for m in 
+      set(dir(col.str)) - set(dir(''))
+      if not m.startswith('_')]))           
+
+```
+
+```{python}
+'https://metasnake.com'.startswith('https://twitter.com')
+# False
+```
+
+```{python}
+print(twit
+ .filter(~col.str.starts_with('https://twitter.com/'))
+)
+
+```
+
+## Extracting the Username
+
+```{python}
+print('https://metasnake.com/effective-polars'.split('/'))
+
+```
+
+```{python}
+print(twit
+ .select(col.str.split('/'))
+)
+
+```
+
+```{python}
+print([m for m in dir(col.list)
+    if not m.startswith('_')])
+
+```
+
+```{python}
+print(twit
+ .select(col.str.split('/')
+    .list.len())
+)
+
+```
+
+```{python}
+print(twit
+ .select(col.str.split('/')
+    .list.to_struct())
+)
+
+```
+
+```{python}
+print(twit
+ .select(col.str.split('/')
+    .list.to_struct())
+ .unnest('Tweet permalink')
+)
+
+```
+
+```{python}
+print(twit
+ .select(col.str.split('/')
+    .list.to_struct())
+ .unnest('Tweet permalink')
+ .to_struct()          
+)
+
+```
+
+```{python}
+print(twit
+ .select(col.str.split('/')
+    .list.join('/')
+ )
+)
+
+```
+
+```{python}
+print(twit
+ .select(col.str.split('/')
+    .list.to_struct())
+ .select(pl.all().map_elements(lambda elem: list(elem)))          
+)
+
+```
+
+```{python}
+print(twit
+ .with_columns(username=col.str.split('/')
+    .list.get(3))
+)
+
+```
+
+```{python}
+print(twit
+ .with_columns(username=col.str.split('/')
+    .list[3])
+)
+
+```
+
+## Extract the Username with a Regular Expression
+
+```{python}
+regex = r'^https:\/\/twitter\.com\/([a-zA-Z0-9_]+)\/status\/(\d+)$'
+print(twit
+ .select(user=col.str.extract(regex, group_index=1))
+)
+
+```
+
+## Counting Words and Mentions
+
+```{python}
+tweet_col = pl.col('Tweet text')
+print(twit
+ .select(tweet_col.str.split(' '))
+)
+
+```
+
+```{python}
+print(twit
+ .select(tweet_col.str.split(' ').list.len())
+)
+
+```
+
+```{python}
+print(twit
+ .with_columns(word_count=tweet_col.str.split(' ').list.len())
+)
+
+```
+
+```{python}
+print(twit
+ .select(tweet_col.str.split(' ').list.eval(
+    pl.element().str.starts_with('@')))
+)
+
+```
+
+```{python}
+print(twit
+ .select(tweet_col.str.split(' ').str.starts_with('@'))
+)
+# Traceback (most recent call last)
+#   ...
+# InvalidOperationError: cannot cast List type (inner: 'String', to:
+#      'String')
+```
+
+```{python}
+print(twit
+ .select(tweet_col.str.split(' ')
+         .list.eval(pl.element().str.starts_with('@'))
+         .list.sum())
+)
+
+```
+
+```{python}
+print(twit
+ .select(tweet_col.str.split(' ')
+         .list.eval(pl.element()
+                    .str.starts_with('@')
+                    .list.len()))
+)
+# Traceback (most recent call last)
+#   ...
+# SchemaError: invalid series dtype: expected `List`, got `bool`
+```
+
+```{python}
+print(twit
+ .with_columns(word_count=tweet_col.str.split(' ').list.len(),
+     num_mentions=tweet_col.str.split(' ')
+                   .list.eval(pl.element().str.starts_with('@'))
+                   .list.sum())
+)
+
+```
+
+## Checking for Emojis
+
+```{python}
+non_ascii = r'[^\x00-\x7F]'
+tweet_col = pl.col('Tweet text')
+print(twit
+ .select(tweet_col, has_emoji=tweet_col.str.contains(non_ascii))
+)
+
+```
+
+```{python}
+print(twit
+ .select('engagements', 
+     tweet_len=tweet_col.str.split(' ').list.len(),
+     has_emoji=tweet_col.str.contains(non_ascii))
+ .corr()
+)
+
+```
+
+```{python}
+import numpy as np
+def jitter(col, amount=.5):
+    return col + np.random.uniform(-amount, amount, len(col))   
+
+(twit
+ .select('engagements', 
+     has_emoji=tweet_col.str.contains(non_ascii).cast(pl.Int8))
+ .pipe(lambda df: df.with_columns(jitter(df['has_emoji'], amount=.4)))
+ .plot.scatter(x='engagements', y='has_emoji', alpha=.1)
+)
+
+
+
+
+
+# :Scatter   [engagements]   (has_emoji)
+```
+
+## Plotting Trends
+
+```{python}
+print(twit
+ .select('time', 'engagements', tweet_col,
+     reply=tweet_col.str.starts_with('@'))
+)
+
+```
+
+```{python}
+print(twit
+ .select(pl.col('time').str.to_datetime('%Y-%m-%d %H:%M:%S%z'),
+         'engagements',
+         reply=tweet_col.str.starts_with('@'))
+ .pivot(index='time', columns='reply', values='engagements',
+        aggregate_function='sum')
+ .rename({'false': 'original', 'true': 'reply'})
+)
+
+```
+
+```
+pip install 'polars[plot]'
+```
+
+```{python}
+(twit
+ .select(pl.col('time').str.to_datetime('%Y-%m-%d %H:%M:%S%z'),
+         'engagements',
+         reply=tweet_col.str.starts_with('@'))
+ .pivot(index='time', columns='reply', values='engagements',
+        aggregate_function='sum')
+ .rename({'false': 'original', 'true': 'reply'})
+ .plot(kind='line', x='time', y=['original', 'reply'])          
+)
+
+# :NdOverlay   [Variable]
+#    :Curve   [time]   (value)
+```
+
+```{python}
+(twit
+ .select(pl.col('time').str.to_datetime('%Y-%m-%d %H:%M:%S%z'),
+         'engagements',
+         reply=tweet_col.str.starts_with('@'))
+ .pivot(index='time', columns='reply', values='engagements',
+        aggregate_function='sum')
+ .set_sorted('time')
+ .group_by_dynamic('time', every='1w')
+ .agg(pl.col('true', 'false').mean())
+ .rename({'false': 'original', 'true': 'reply'})
+ .plot(kind='line', x='time', y=['original', 'reply'],
+      title='Engagements by reply type')
+)
+
+# :NdOverlay   [Variable]
+#    :Curve   [time]   (value)
+```
+
+## Chapter Functions and Methods
+
+## Summary
+
+## Exercises
+
+# Aggregation with Polars 
+
+## Introduction
+
+## Loading the Data
+
+## Aggregations
+
+```{python}
+col = pl.col('make')
+print(sorted(att for att in dir(col) if not att.startswith('_')))
+
+```
+
+```{python}
+city = pl.col('city08')
+print(autos
+ .select(mean_city=city.mean(),
+         std_city=city.std(),
+         var_city=city.var(),
+         q99_city=city.quantile(.99)
+         )
+)
+
+```
+
+```{python}
+print(autos
+.with_columns(mean_city=city.mean())
+)
+
+```
+
+## Lists
+
+```{python}
+tests = pl.DataFrame({'name':['Tom', 'Sally', 'Jose'],
+                      'test1':[99, 98, 95],
+                      'test2':[92, None, 99],
+                      'test3':[91, 93, 95],
+                      'test4':[94, 92, 99]})
+
+print(tests)
+
+```
+
+```{python}
+import polars.selectors as cs
+print(tests
+.select(scores=pl.concat_list(cs.matches(r'test\d+')))
+.with_columns(sorted_scores=pl.col('scores').list.sort())
+.with_columns(slice_scores=pl.col('sorted_scores').list.slice(2,4))
+.with_columns(sum_scores=pl.col('slice_scores').list.sum())
+)
+
+```
+
+```{python}
+print(tests.select(pl.all().exclude('name')))
+
+```
+
+```{python}
+(tests.select(pl.all() - pl.col('name')))
+# Traceback (most recent call last)
+#   ...
+# ComputeError: arithmetic on string and numeric not allowed, try an
+#      explicit cast first
+```
+
+```{python}
+print(tests.select(cs.all() - pl.col('name')))
+
+```
+
+```{python}
+print(tests.select(cs.starts_with('test')))
+
+```
+
+```{python}
+print(tests
+.select(scores=pl.concat_list(cs.matches(r'test\d+')))
+.with_columns(max=pl.col('scores').list.max())          
+)
+
+```
+
+## GroupBy Operations 
+
+```{python}
+print(autos
+ .group_by('make')
+)
+```
+
+```{python}
+print(autos
+ .group_by('make')
+ .agg(mean_city=pl.col('city08').mean())
+)
+
+```
+
+```{python}
+print(autos
+ .group_by('make', maintain_order=True)
+ .agg(mean_city=pl.col('city08').mean())
+)
+
+```
+
+```{python}
+print(autos
+ .group_by('make')
+ .agg(mean_city=pl.col('city08').mean())
+ .sort('make')
+)
+
+```
+
+```{python}
+print(autos
+ .with_columns(pl.col('make').cast(pl.Categorical('lexical')))
+ .group_by('make')
+ .agg(mean_city=pl.col('city08').mean())
+ .sort('make')
+)
+
+```
+
+## Multiple Aggregations
+
+```{python}
+print (autos
+ .with_columns(pl.col('make').cast(pl.Categorical('lexical')))
+ .group_by('make')
+ .agg(mean_city=pl.col('city08').mean(),
+      mean_highway=pl.col('highway08').mean(),
+      median_city=pl.col('city08').median(),
+      median_highway=pl.col('highway08').median()
+  )
+ .sort('make')
+)
+
+```
+
+## Grouping By Multiple Columns
+
+```{python}
+print(autos
+ .with_columns(pl.col('make').cast(pl.Categorical('lexical')))
+ .group_by(['make', 'year'])
+ .agg(mean_city08=pl.col('city08').mean())
+ .sort(['make', 'year'])
+ )
+
+```
+
+## Pivoting with Multiple Aggregations
+
+```{python}
+top3 = (autos
+ .group_by('make')
+ .len()
+ .sort(pl.col('len'), descending=True)
+ .head(3)
+ )
+
+print(top3)
+
+```
+
+```{python}
+print(autos
+ .filter(pl.col('make').is_in(top3['make']))
+ .group_by(['year', 'make'])
+ .agg(min_city08=pl.col('city08').min(),
+      max_city08=pl.col('city08').max())
+ .sort(['year', 'make'])
+)
+
+```
+
+```{python}
+print(autos
+ .filter(pl.col('make').is_in(top3['make']))
+ .group_by(['year', 'make'])
+ .agg(min_city08=pl.col('city08').min(),
+      max_city08=pl.col('city08').max())
+ .sort(['year', 'make'])
+ .pivot(index='year', columns='make', 
+        values=['min_city08', 'max_city08'])
+)
+
+```
+
+```{python}
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(figsize=(10, 6))
+(autos
+ .filter(pl.col('make').is_in(top3['make']))
+ .group_by(['year', 'make'])
+ .agg(min_city08=pl.col('city08').min(),
+      max_city08=pl.col('city08').max())
+ .sort(['year', 'make'])
+ .pivot(index='year', columns='make', 
+        values=['min_city08', 'max_city08'])
+ .select(['year', 'min_city08_make_Dodge', 'max_city08_make_Dodge', 
+          'min_city08_make_Ford', 'max_city08_make_Ford',
+          'max_city08_make_Chevrolet', 'min_city08_make_Chevrolet'])
+ .to_pandas()
+ .set_index('year')
+ .plot(ax=ax, color=['#55c667', '#2f8738', '#2c4279', '#141f38', 
+                     '#d4e116', '#afba12'])
+)
+
+```
+
+```{python}
+
+res = (autos
+ .filter(pl.col('make').is_in(top3['make']))
+ .group_by(['year', 'make'])
+ .agg(min_city08=pl.col('city08').min(),
+      max_city08=pl.col('city08').max())
+ .sort(['year', 'make'])
+ .pivot(index='year', columns='make', 
+        values=['min_city08', 'max_city08'])
+ .select(['year', 'min_city08_make_Dodge', 'max_city08_make_Dodge', 
+          'min_city08_make_Ford', 'max_city08_make_Ford',
+          'max_city08_make_Chevrolet', 'min_city08_make_Chevrolet'])
+ .plot(x='year', color=['#55c667', '#2f8738', '#2c4279', '#141f38', 
+                     '#d4e116', '#afba12'])
+)
+```
+
+```{python}
+import hvplot 
+# saving requires selenium or phantomjs
+hvplot.save(res, 'img/hvplot1.png') 
+```
+
+## Aggregating to the Original Rows
+
+```{python}
+print(autos
+ .with_columns(mean_city08=pl.col('city08')
+               .mean()
+               .over('make'))
+)
+
+```
+
+```{python}
+print(autos
+ .group_by('make')
+ .agg(mean_city08=pl.col('city08').mean())
+ .filter(pl.col('make').cast(pl.String)
+            .is_in(['Alfa Romeo', 'Ferrari', 'Dodge']))
+)
+
+```
+
+## Grouping to Lists
+
+```{python}
+print(autos
+ .group_by('make')
+ .agg(pl.all())
+)
+
+```
+
+```{python}
+print(autos
+ .select('make', 'model', 'cylinders')                 
+ .group_by('make')
+ .agg(pl.all().unique().drop_nulls().len().name.suffix('_len'))          
+)
+
+```
+
+```{python}
+print(autos
+ .with_columns(pl.col('model', 'cylinders')      
+    .unique().drop_nulls().len()
+    .over('make')
+    .name.suffix('_len'))     
+)
+
+```
+
+```{python}
+print(autos
+ .select((cs.all() - pl.col('make'))
+            .unique().drop_nulls().len()
+            .over('make')
+            .name.suffix('_len'))
+)
+
+```
+
+## Chapter Methods and Functions
+
+## Summary
+
+## Exercises
+
+# Data Filtering and Selection 
+
+## Introduction
+
+## Getting the Data
+
+## Filtering with Expressions
+
+```{python}
+print(autos
+  .filter(pl.col('city08') > 40)
+)
+
+```
+
+```{python}
+print(autos
+  .filter(pl.col('city08') > 40)
+  .filter(pl.col('make') == 'Toyota')
+)
+
+```
+
+```{python}
+print(autos
+  .filter(pl.col('city08') > 40,
+          pl.col('make') == 'Toyota')
+)
+
+```
+
+```{python}
+print(autos
+  .filter((pl.col('make') == 'Toyota') & (pl.col('city08') > 40))
+)
+
+```
+
+```{python}
+print(autos
+  .filter(pl.col('make') == 'Toyota' & pl.col('city08') > 40)
+)
+# Traceback (most recent call last)
+#   ...
+# TypeError: the truth value of an Expr is ambiguous
+
+# You probably got here by using a Python standard library function
+#      instead of the native expressions API.
+# Here are some things you might want to try:
+# - instead of `pl.col('a') and pl.col('b')`, use `pl.col('a') &
+#      pl.col('b')`
+# - instead of `pl.col('a') in [y, z]`, use `pl.col('a').is_in([y, z])`
+# - instead of `max(pl.col('a'), pl.col('b'))`, use
+#      `pl.max_horizontal(pl.col('a'), pl.col('b'))`
+```
+
+## Filtering with Keywords
+
+```{python}
+print(autos
+ .filter(make='Ford')
+)
+
+```
+
+## Filtering with Dates
+
+```{python}
+from datetime import datetime
+mar2018 = datetime(2018, 3, 1)
+print(autos
+ .filter(pl.col('createdOn') >= mar2018)
+ .sort('createdOn')
+)
+
+```
+
+```{python}
+print(autos
+ .filter(pl.col('city08').is_between(40, 50))
+ .sort('city08')
+ .select(['year', 'make', 'model', 'VClass', 'city08'])
+)
+
+```
+
+```{python}
+from datetime import timedelta
+mar2013 = mar2018 - timedelta(days=5*365)
+print(autos
+.filter(pl.col('createdOn').is_between(mar2013, mar2018))
+.sort('createdOn')
+)
+
+```
+
+## Advanced Filtering Techniques
+
+```{python}
+def standardize(col):
+  return (col - col.mean()) / col.std()
+
+print(autos
+  .filter(standardize(pl.col('city08')) > 3)
+  .select(['year', 'make', 'model', 'VClass', 'city08'])
+)
+
+```
+
+```{python}
+print(autos
+  .filter(standardize(pl.col('city08')).over(['year', 'make']) > 3)
+  .select(['year', 'make', 'model', 'VClass', 'city08'])
+)
+
+```
+
+## More Filtering with Window Expressions
+
+```{python}
+print(autos
+ .with_columns(
+     model_age=(pl.col('year').max() - pl.col('year').min())
+                .over('model'))
+)
+
+```
+
+```{python}
+print(autos
+ .with_columns(
+    model_age=(pl.col('year').max() - pl.col('year').min())
+               .over('model'))
+ .filter(pl.col('model_age') > 10)
+)
+
+```
+
+## Manipulating Data with Conditional Expressions
+
+```{python}
+print(autos
+.group_by('fuelType')
+.len()
+)
+
+```
+
+```{python}
+print(autos
+ .select(pl.col('fuelType').value_counts(sort=True))
+)     
+
+```
+
+```{python}
+print(autos
+ .select(pl.col('fuelType').value_counts(sort=True))
+ .unnest('fuelType')          
+)     
+
+```
+
+```{python}
+print(autos
+ .select(pl.col('fuelType')
+         .value_counts(sort=True)
+         .struct[0])
+)     
+
+```
+
+```{python}
+if 'Diesel' in fuel_type:
+    fuel_type_simple = 'Diesel'
+elif 'CNG' in fuel_type:
+    fuel_type_simple = 'CNG'
+elif 'Electricity' in fuel_type:
+    fuel_type_simple = 'Electric'
+else:
+    fuel_type_simple = 'Gasoline'
+```
+
+```python
+(pl.when(COND_EXPR)
+   .then(EXPR)
+ .when(COND_EXPR2)
+   .then(EXPR2)
+ # more when's
+ .otherwise(EXPRN) # optional
+)
+```
+
+```{python}
+fuel_str = pl.col('fuelType').cast(pl.String)
+simple = (pl.when(fuel_str.str.contains('Diesel')).then(pl.lit('Diesel'))
+  .when(fuel_str.str.contains('CNG')).then(pl.lit('CNG'))
+  .when(fuel_str.str.contains('Electricity')).then(pl.lit('Electric'))
+  .otherwise(pl.lit('Gasoline')))
+
+print(autos
+.with_columns(simple.alias('fuelTypeSimple'))
+)
+
+```
+
+```{python}
+(pl.when(fuel_str.str.contains('Diesel')).then(pl.lit('Diesel'))
+```
+
+```{python}
+ (pl.when(fuel_str.str.contains('Diesel')).then('Diesel')
+```
+
+```{python}
+ (pl.when(fuel_str.str.contains('Diesel')).then(pl.col('Diesel'))
+```
+
+```{python}
+fuel_str = pl.col('fuelType').cast(pl.String)
+simple = (pl.when(fuel_str.str.contains('Diesel')).then(pl.lit('Diesel'))
+  .when(fuel_str.str.contains('CNG')).then(pl.lit('CNG'))
+  .when(fuel_str.str.contains('Electricity')).then(pl.lit('Electric'))
+  .otherwise(pl.lit('Gasoline')))
+
+print(autos
+.with_columns(fuelTypeSimple=simple)
+.filter(pl.col('fuelTypeSimple') == 'CNG')
+)
+
+```
+
+```{python}
+fuel_str = pl.col('fuelType').cast(pl.String)
+simple = (pl.when(fuel_str.str.contains('Diesel')).then(pl.lit('Diesel'))
+  .when(fuel_str.str.contains('CNG')).then(pl.lit('CNG'))
+  .when(fuel_str.str.contains('Electricity')).then(pl.lit('Electric'))
+  .otherwise(pl.lit('Gasoline')))
+
+print(autos
+.filter(simple == 'CNG')
+)
+
+```
+
+```{python}
+top_n = (pl.col('make')
+     .value_counts(sort=True)
+     .struct[0]
+     .head(10)
+)
+
+top_expr = (pl.when(pl.col('make').is_in(top_n))
+    .then(pl.col('make'))
+    .otherwise(pl.lit('Other'))
+)
+            
+print(autos
+ .with_columns(simple_make=top_expr)
+)
+
+```
+
+```{python}
+def limit(col_name, n=10, default='other'):
+    col = pl.col(col_name)    
+    top_n = (col
+     .value_counts(sort=True)
+     .struct[0]
+     .head(n)
+    )          
+    return (pl.when(col.is_in(top_n))
+     .then(col)
+     .otherwise(pl.lit(default))
+    )
+            
+print(autos
+ .with_columns(simple_make=limit('make'))
+)    
+
+```
+
+```{python}
+with pl.StringCache():
+    autos2 = tweak_auto(raw)
+    print(autos2
+     .select(simple_make=limit('make', 20, 'other')))
+
+```
+
+## Handling Missing Data
+
+```{python}
+print(autos
+ .select(pl.col('*').is_null())
+)
+
+```
+
+```{python}
+int(True)
+# 1
+```
+
+```{python}
+print(autos
+ .select(pl.all().is_null().sum())
+)
+
+```
+
+```{python}
+print(autos
+ .select(pl.all().null_count())
+)
+
+```
+
+```{python}
+print(autos
+ .null_count()
+)
+
+```
+
+```{python}
+print(autos
+.describe()
+)
+
+```
+
+```{python}
+print(autos
+ .select(pl.all().is_null().mean() * 100)
+)
+
+```
+
+```{python}
+print(autos
+ .select(pl.all().is_null().cast(pl.Int32).mean() * 100)
+ .pipe(lambda df_: df_.select([col.name 
+           for col in df_.select(pl.col(pl.Float64)> 0) 
+           if col.all()]))
+)
+
+```
+
+```{python}
+import polars.selectors as cs
+print(autos
+ .select(cs.numeric().is_nan().cast(pl.Int32).mean() * 100)
+ .pipe(lambda df_: df_.select([col.name 
+           for col in df_.select(pl.col(pl.Float64)> 0) 
+           if col.all()]))
+)
+
+```
+
+## Dropping Rows with Missing Values
+
+```{python}
+from sklearn import decomposition
+import polars.selectors as cs
+pca = decomposition.PCA()
+pca.fit(autos.select(cs.numeric()))
+# Traceback (most recent call last)
+#   ...
+# ValueError: Input X contains NaN.
+# PCA does not accept missing values encoded as NaN natively. For
+#      supervised learning, you might want to consider
+#      sklearn.ensemble.HistGradien...
+```
+
+```{python}
+print(autos
+ .drop_nulls()
+)
+
+```
+
+```{python}
+print(autos
+ .drop_nulls(subset=(['cylinders', 'displ']))
+)
+
+```
+
+```{python}
+print(autos
+ .drop_nulls(subset=cs.numeric())
+)
+
+```
+
+```{python}
+pca = decomposition.PCA()
+pca.fit(autos.select(cs.numeric()).drop_nulls())
+PCA()
+```
+
+```{python}
+(autos
+.filter(pl.col('num_gears', 'is_automatic').is_null())
+)
+# Traceback (most recent call last)
+#   ...
+# ComputeError: The predicate passed to 'LazyFrame.filter' expanded to
+#      multiple expressions: 
+
+# 	col("num_gears").is_null(),
+# 	col("is_automatic").is_null(),
+# This is ambiguous. Try to combine the predicates with the 'all' or `any'
+#      expression.
+
+# Error originated just after this operation:
+# DF ["year", "make", "model", "displ"]; PROJECT */15 COLUMNS; SELECTION:
+#      "None"
+```
+
+```{python}
+print(autos
+.filter(pl.col('num_gears').is_null() & 
+        pl.col('is_automatic').is_null())
+)
+
+```
+
+```{python}
+print(autos
+ .filter(pl.all_horizontal(
+     pl.col('num_gears', 'is_automatic').is_null()))
+)
+
+```
+
+```{python}
+print(autos
+ .filter(~pl.all_horizontal(
+     pl.col('num_gears', 'is_automatic').is_null()))
+)
+
+```
+
+## Filling in Missing Values
+
+```{python}
+print(autos
+ .with_columns(pl.col('cylinders').fill_null(0))
+)
+
+```
+
+```{python}
+print(autos
+.select(cyl_mean=pl.col('cylinders').mean(),
+        cyl_fill0_mean=pl.col('cylinders').fill_null(0).mean())
+)
+
+```
+
+## Filling in Time Series Missing Values
+
+```{python}
+import numpy as np
+snow = pl.DataFrame({'depth': [0, 0, np.nan, 9.1, 11.3, None, 7.8, 
+                               15, 20]})
+print(snow)
+
+```
+
+```{python}
+print(snow
+ .with_columns(pl.col('depth'),
+   depth_ffill=pl.col('depth').fill_null(strategy='forward'),
+   depth_bfill=pl.col('depth').fill_null(strategy='backward'),
+   depth_interp=pl.col('depth').interpolate(),
+   depth_0fill=pl.col('depth').fill_null(0),                                     
+   depth_mean=pl.col('depth').fill_null(strategy='mean'),
+ )
+)
+
+
+```
+
+```{python}
+print(snow
+ .describe()
+)
+
+```
+
+```{python}
+print(snow
+ .with_columns('depth',
+   fill_nan=pl.col('depth').fill_nan(None),
+   depth_ffill=pl.col('depth').fill_null(strategy='forward'),
+   depth_bfill=pl.col('depth').fill_null(strategy='backward'),
+   depth_interp=pl.col('depth').interpolate(),
+   depth_mean=pl.col('depth').fill_null(strategy='mean')
+ )
+)
+
+```
+
+```{python}
+print(snow
+ .with_columns('depth',
+   fill_nan=pl.col('depth').fill_nan(None),
+   depth_ffill=pl.col('fill_nan').fill_null(strategy='forward'),
+   depth_bfill=pl.col('fill_nan').fill_null(strategy='backward'),
+   depth_interp=pl.col('fill_nan').interpolate(),
+   depth_mean=pl.col('fill_nan').fill_null(strategy='mean')
+ )
+)
+# Traceback (most recent call last)
+#   ...
+# ColumnNotFoundError: fill_nan
+
+# Error originated just after this operation:
+# DF ["depth"]; PROJECT */1 COLUMNS; SELECTION: "None"
+```
+
+```{python}
+imp_pl = (snow
+ .with_columns(fill_nan=pl.col('depth').fill_nan(None))
+ .with_columns(
+   depth_ffill=pl.col('fill_nan').fill_null(strategy='forward'),
+   depth_bfill=pl.col('fill_nan').fill_null(strategy='backward'),
+   depth_interp=pl.col('fill_nan').interpolate(),
+   depth_mean=pl.col('fill_nan').fill_null(strategy='mean')
+ )
+)
+print(imp_pl)
+
+```
+
+```{python}
+import hvplot
+hvplot.extension('matplotlib')
+    
+shift = .8
+plot=(imp_pl
+ .select(Original=pl.col('depth'),
+         Forward_fill=pl.col('depth_ffill')+shift,
+         Backward_fill=pl.col('depth_bfill')+shift * 2,
+         Interpolate=pl.col('depth_interp')+shift * 3,
+         Mean_fill=pl.col('depth_mean')+shift * 4,
+        )
+ .plot(title='Missing Values Demo', width=1000, height=500)
+)
+```
+
+## Chapter Methods and Functions
+
+## Summary
+
+## Exercises
+
+# Sorting and Ordering in Polars
+
+## Introduction
+
+## Loading the Fuel Economy Dataset
+
+## Sorting by a Single Column
+
+```{python}
+names = ['Al', 'Bob', 'Charlie', 'Dan', 'Edith', 'Frank']
+```
+
+```{python}
+sorted(names)
+```
+
+```{python}
+sorted(names, key=len)
+
+```
+
+```{python}
+print(autos
+ .with_columns(pl.col('make').cast(pl.String))
+ .sort(by=pl.col('make').str.len_chars())
+)
+
+```
+
+```{python}
+print(autos
+ .sort('year')
+)
+
+```
+
+```{python}
+print(autos
+.sort((pl.col('city08') + pl.col('highway08'))/2)
+)
+
+```
+
+```{python}
+print(autos
+.sort(pl.col('VClass'))
+)
+shape: (41_144, 15)
+│ year   make         model       .   createdOn   is_automa   num_gears │
+
+```
+
+```{python}
+print(autos
+.with_columns(make_avg=pl.col('city08').mean().over(pl.col('make')))
+)
+
+```
+
+```{python}
+print(autos
+.sort(pl.col('city08').mean().over(pl.col('make')))
+)
+
+```
+
+## Sorting by Multiple Columns
+
+```{python}
+print(autos
+ .sort(['year', 'make'])
+)
+
+```
+
+```{python}
+print(autos
+ .sort(['year', 'make', 'model'])
+)
+
+```
+
+```{python}
+print(autos
+ .sort(['year', 'make', 'model'], 
+       descending=[True, False, False])
+)
+
+```
+
+```{python}
+print(autos
+ .with_columns(pl.col('make').cast(pl.Categorical('lexical')),
+               pl.col('model').cast(pl.Categorical('lexical')))
+ .sort(['year', 'make', 'model'], 
+       descending=[True, False, False])
+)
+
+```
+
+## Specifying Custom Ordering for Categorical Columns
+
+```{python}
+print(autos
+ .with_columns(month=pl.col('createdOn').dt.strftime('%B'))
+ .sort('month')
+)
+
+```
+
+```{python}
+month_order = ['January', 'February', 'March', 'April', 'May', 'June',
+               'July', 'August', 'September', 'October', 'November', 
+               'December']
+with pl.StringCache():
+    pl.Series(month_order).cast(pl.Categorical) 
+    print(autos
+       .with_columns(month=pl.col('createdOn').dt.strftime('%B')
+                .cast(pl.Categorical))
+       .sort('month')
+    )
+
+```
+
+```{python}
+month_order = ['January', 'February', 'March', 'April', 'May', 'June',
+               'July', 'August', 'September', 'October', 'November', 
+               'December']
+@pl.StringCache()
+def create_month_order():
+    s = pl.Series(month_order).cast(pl.Categorical) 
+    return (autos
+       .with_columns(month=pl.col('createdOn').dt.strftime('%B')
+                    .cast(pl.Categorical))
+    )
+
+print(create_month_order().sort('month'))
+
+```
+
+```{python}
+import polars as pl
+path = 'data/vehicles.csv'
+raw = pl.read_csv(path, null_values=['NA'])
+
+@pl.StringCache()
+def tweak_auto(df):
+  cols = ['year', 'make', 'model', 'displ', 'cylinders', 'trany',
+          'drive', 'VClass', 'fuelType', 'barrels08', 'city08',
+          'highway08', 'createdOn']
+  return (df
+  .select(pl.col(cols))
+  .with_columns(pl.col('year').cast(pl.Int16),
+       pl.col(['cylinders', 'highway08', 'city08']).cast(pl.UInt8),
+       pl.col(['displ', 'barrels08']).cast(pl.Float32),
+       pl.col('make').cast(pl.Categorical('lexical')),                    
+       pl.col(['model', 'VClass', 'drive', 'fuelType'])
+              .cast(pl.Categorical),
+       pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
+       is_automatic=pl.col('trany').str.contains('Auto'),
+       num_gears=pl.col('trany').str.extract(r'(\d+)').cast(pl.Int8)
+       )
+   )
+
+
+autos = tweak_auto(raw)
+```
+
+```{python}
+print(tweak_auto(raw)
+ .sort('make'))
+
+```
+
+## Enums and Ordering
+
+```{python}
+import io
+data = '''Name,Birthday
+Brianna Smith,2000-02-16
+Alex Johnson,2001-01-15
+Carlos Gomez,2002-03-17
+Diana Clarke,2003-04-18
+Ethan Hunt,2002-05-19
+Fiona Gray,2005-06-20
+George King,2006-07-21
+Hannah Scott,2007-08-22
+Ian Miles,2008-09-23
+Julia Banks,2009-10-24'''
+
+students = pl.read_csv(io.StringIO(data))
+print(students)
+
+```
+
+```{python}
+bday = pl.col('Birthday')
+print(students
+  .with_columns(bday.str.to_datetime('%Y-%m-%d'))
+  .with_columns(month=bday.dt.strftime('%B'))
+  .sort('month')
+)     
+
+```
+
+```{python}
+month_type = pl.Enum(['January', 'February', 'March', 'April', 'May', 
+   'June', 'July', 'August', 'September', 'October', 'November', 
+   'December'])
+```
+
+```{python}
+print(students
+  .with_columns(bday.str.to_datetime('%Y-%m-%d'))
+  .with_columns(month=bday.dt.strftime('%B').cast(month_type))
+  .sort('month')
+) 
+
+```
+
+```{python}
+holiday_data = '''Month,Holiday
+January,New Year's Day
+February,Valentine's Day
+March,St. Patrick's Day
+April,April Fools' Day
+May,Memorial Day
+June,Juneteenth
+July,Independence Day
+August,Labor Day
+September,Patriot Day
+October,Halloween
+November,Thanksgiving
+December,Christmas Day'''
+
+holidays = pl.read_csv(io.StringIO(holiday_data))
+print(holidays)
+
+```
+
+```{python}
+print(students
+  .with_columns(bday.str.to_datetime('%Y-%m-%d'))
+  .with_columns(month=bday.dt.strftime('%B'))
+  .join(holidays, left_on='month', right_on='Month')
+  .sort('month'))
+
+```
+
+```{python}
+print(students
+  .with_columns(bday.str.to_datetime('%Y-%m-%d'))
+  .with_columns(month=bday.dt.strftime('%B').cast(pl.Categorical))
+  .join(holidays, left_on='month', right_on='Month')
+  .sort('month'))
+# Traceback (most recent call last)
+#   ...
+# ComputeError: datatypes of join keys don't match - `month`: cat on left
+#      does not match `Month`: str on right
+```
+
+```{python}
+print(students
+  .with_columns(bday.str.to_datetime('%Y-%m-%d'))
+  .with_columns(month=bday.dt.strftime('%B').cast(pl.Categorical))
+  .join(holidays.with_columns(pl.col('Month').cast(pl.Categorical)),
+     left_on='month', right_on='Month')
+  .sort('month'))
+
+```
+
+```{python}
+print(students
+  .with_columns(bday.str.to_datetime('%Y-%m-%d'))
+  .with_columns(month=bday.dt.strftime('%B').cast(month_type))
+  .join(holidays.with_columns(pl.col('Month').cast(month_type)),
+     left_on='month', right_on='Month')
+  .sort('month'))
+
+```
+
+## Group Ordering and maintain_order
+
+```{python}
+print(autos
+ .group_by(pl.col('make'))
+ .len()
+)
+
+```
+
+```{python}
+print(autos
+ .group_by(pl.col('make'), maintain_order=True)
+ .len()
+)
+
+```
+
+```{python}
+print(autos
+ .group_by(pl.col('make'))
+ .len()
+ .sort('make')          
+)
+
+```
+
+## Stable Sorting
+
+```{python}
+students = pl.DataFrame({
+   'name': ['Alice', 'Bob', 'Charlie', 'Dana', 'Eve'],
+   'age': [25, 20, 25, 21, 24],
+  'grade': [88, 92, 95, 88, 60],
+})
+
+print(students)
+
+```
+
+```{python}
+print(students
+    .sort('age')
+)
+
+```
+
+```{python}
+print(students
+    .sort('grade')
+)
+
+```
+
+## Sorting and Filtering
+
+```{python}
+%%timeit
+(autos.filter(pl.col('year') == 1994))
+```
+
+```{python}
+autos_year_sorted = autos.sort('year')
+```
+
+```{python}
+%%timeit
+(autos_year_sorted.filter(pl.col('year') == 1994))
+```
+
+```{python}
+cat_make = autos
+string_make = autos.with_columns(make=pl.col('make').cast(pl.String))
+sorted_make = (autos
+  .with_columns(make=pl.col('make').cast(pl.String))
+  .sort('make'))
+```
+
+```{python}
+%%timeit
+cat_make.filter(pl.col('make') == 'Ford')
+84.2 µs ± 1.35 µs per loop (mean ± std. dev. of 7 runs, 10,000 loops
+```
+
+```{python}
+%%timeit
+string_make.filter(pl.col('make') == 'Ford')
+```
+
+```{python}
+%%timeit
+sorted_make.filter(pl.col('make') == 'Ford')
+```
+
+## Chapter Methods and Functions
+
+## Summary
+
+## Exercises
+
+# Time Series Analysis 
+
+## Introduction
+
+## Loading the Dataset
+
+```{python}
+import urllib.request
+
+def download_and_modify_url(url, local_filename):
+    urllib.request.urlretrieve(url, local_filename)
+    with open(local_filename, 'r') as file:
+        lines = file.readlines()
+
+    with open(local_filename, 'w') as file:
+        for i, line in enumerate(lines):
+            if i <34 or i == 35:
+                continue
+            file.write(line)
+
+url = 'https://github.com/mattharrison/datasets/raw/master'\
+    '/data/dirtydevil.txt'
+local_filename = 'data/devilclean.txt'
+download_and_modify_url(url, local_filename)
+```
+
+```{python}
+import polars as pl
+
+def tweak_river(df_):
+    return (df_
+        .select('agency_cd', 'site_no', 'tz_cd', 
+                pl.col('datetime').str.to_datetime(),
+                cfs=pl.col('144166_00060'),
+                gage_height=pl.col('144167_00065').cast(pl.Float64)
+                )
+            )
+
+raw = pl.read_csv('data/devilclean.txt', separator='\t')
+dd = tweak_river(raw)
+print(dd)
+
+```
+
+## Converting to Dates
+
+```{python}
+print(pl.read_csv('data/devilclean.txt', separator='\t', 
+                  try_parse_dates=True))
+
+```
+
+```{python}
+format = '%Y-%m-%d %H:%M'
+print(raw
+.select(original=pl.col('datetime'),
+        to_datetime=pl.col('datetime').str.to_datetime(format),
+        to_date=pl.col('datetime').str.to_date(format),
+        strptime=pl.col('datetime').str.strptime(pl.Datetime, format),
+        # line below fails
+        #cast=pl.col('datetime').cast(pl.Datetime)
+        )
+)
+
+```
+
+## Combining Columns to Create Dates
+
+```{python}
+print(raw
+ .select(to_datetime=pl.col('datetime').str.to_datetime(format))
+ .with_columns(month=pl.col('to_datetime').dt.strftime('%m'),
+               year=pl.col('to_datetime').dt.strftime('%Y'))
+)
+
+```
+
+```{python}
+print(raw
+ .select(to_datetime=pl.col('datetime').str.to_datetime(format))
+ .with_columns(month=pl.col('to_datetime').dt.strftime('%m'),
+               year=pl.col('to_datetime').dt.strftime('%Y'))
+ .select(pl.date(pl.col('year'), pl.col('month'), 1))                   
+)
+
+```
+
+## Changing Timezones
+
+```{python}
+print(tweak_river(raw)
+['datetime']
+.dtype.time_zone
+)
+# None
+```
+
+```{python}
+import pytz
+pytz.all_timezones[:5]
+
+```
+
+```{python}
+format = '%Y-%m-%d %H:%M'
+print(raw
+.select(original=pl.col('datetime'),
+        naive=pl.col('datetime').str.to_datetime(format),
+        utc=pl.col('datetime').str.to_datetime(format)
+            .dt.replace_time_zone('UTC'), 
+        Denver=pl.col('datetime').str.to_datetime(format)
+            .dt.replace_time_zone('UTC')
+            .dt.convert_time_zone('America/Denver'),
+        Denver2=(pl.col('datetime') + ' ' + (pl.col('tz_cd')
+            .str.replace('MST', '-0700').str.replace('MDT', '-0600')))
+            .str.to_datetime('%Y-%m-%d %H:%M %z')
+            .dt.convert_time_zone('America/Denver'),
+        Denver3=(pl.col('datetime').str.to_datetime(format,
+                 time_zone='America/Denver', ambiguous='earliest'))
+        )
+)
+
+```
+
+```{python}
+format = '%Y-%m-%d %H:%M'
+print(raw
+.select(
+        Denver2=(pl.col('datetime') + ' ' + (pl.col('tz_cd')
+            .str.replace('MST', '-0700').str.replace('MDT', '-0600')))
+            .str.to_datetime('%Y-%m-%d %H:%M %z')
+            .dt.convert_time_zone('America/Denver'),            
+        Denver3=(pl.col('datetime').str.to_datetime(format,
+                 time_zone='America/Denver', ambiguous='latest'))
+        )
+.filter(pl.col('Denver3') != pl.col('Denver2'))
+)
+
+```
+
+```{python}
+import polars as pl
+
+def tweak_river(df_, cfs_col, gage_height_col):
+    return (df_
+        .select(
+            'agency_cd', 'site_no', 
+            cfs=pl.col(cfs_col),
+            gage_height=pl.col(gage_height_col).cast(pl.Float64),
+            datetime=(pl.col('datetime') + ' ' + (pl.col('tz_cd')
+                .str.replace('MST', '-0700').str.replace('MDT', '-0600')))
+                .str.to_datetime('%Y-%m-%d %H:%M %z')
+                .dt.convert_time_zone('America/Denver')
+            )
+        )
+
+dd = tweak_river(raw, cfs_col='144166_00060', 
+                gage_height_col='144167_00065')
+```
+
+## Time Aggregations
+
+```{python}
+print(dd
+ .with_columns(year=pl.col('datetime').dt.year())
+ .group_by('year')
+ .agg(pl.col(pl.Float64).mean())
+ )
+
+```
+
+```{python}
+print(dd
+ .with_columns(year=pl.col('datetime').dt.year())
+ .group_by('year', maintain_order=True)
+ .agg(pl.col(pl.Float64).mean())
+ )
+
+```
+
+```{python}
+(dd
+ .group_by_dynamic(index_column='datetime', every='1y')
+ .agg(pl.col(pl.Float64).mean())
+ )
+# Traceback (most recent call last)
+#   ...
+# InvalidOperationError: argument in operation 'group_by_dynamic' is not
+#      explicitly sorted
+
+# - If your data is ALREADY sorted, set the sorted flag with:
+#      '.set_sorted()'.
+# - If your data is NOT sorted, sort the 'expr/series/column' first.
+```
+
+```{python}
+print(dd
+ .sort('datetime')  
+ .group_by_dynamic(index_column='datetime', every='1y')
+ .agg(pl.col(pl.Float64).mean())
+ )
+
+```
+
+```{python}
+print(dd
+ .set_sorted('datetime')  
+ .group_by_dynamic(index_column='datetime', every='1y')
+ .agg(pl.col(pl.Float64).mean())
+)
+
+```
+
+## Time Intervals
+
+```{python}
+print(dd
+ .set_sorted('datetime')  
+ .group_by_dynamic(index_column='datetime', every='2mo')
+ .agg(pl.col(pl.Float64).mean())
+)
+
+```
+
+```{python}
+print(dd
+ .set_sorted('datetime')  
+ .group_by_dynamic(index_column='datetime', every='3h4m5s')
+ .agg(pl.col(pl.Float64).mean())
+)
+
+```
+
+```{python}
+print(dd
+ .set_sorted('datetime')  
+ .group_by_dynamic(index_column='datetime', every='7d', period='5d', 
+                   start_by='monday', check_sorted=False)
+ .agg(pl.col(pl.Float64).mean(),
+     cfs_range=(pl.col('cfs').max() - pl.col('cfs').min()))
+)
+
+```
+
+```{python}
+print(dd
+ .set_sorted('datetime')  
+ .group_by_dynamic(index_column='datetime', every='7d', period='2d', 
+                   start_by='saturday', check_sorted=False)
+ .agg(pl.col(pl.Float64).mean(),
+     cfs_range=(pl.col('cfs').max() - pl.col('cfs').min()))
+)
+
+```
+
+```{python}
+print(dd
+ .with_columns(year=pl.col('datetime').dt.year())
+ .with_columns(year_mean_cfs=pl.col('cfs').mean().over('year'))
+ .with_columns(pct_of_avg=(pl.col('cfs') / pl.col('year_mean_cfs'))
+                  .mul(100).round(2))
+)
+
+```
+
+```{python}
+print(dd
+ .with_columns(year=pl.col('datetime').dt.year(),
+               quarter=pl.col('datetime').dt.quarter())
+ .with_columns(pl.col(['cfs', 'gage_height']).mean().over('year')
+                .name.suffix('_mean_year'),
+               pl.col(['cfs', 'gage_height']).mean().over('quarter')
+                .name.suffix('_mean_quarter'))                   
+)
+
+```
+
+## Multiple Groupings with Timeseries
+
+```{python}
+snake_raw = (pl.read_csv('data/nwis.waterservices.usgs.gov.txt', 
+                     skip_rows=27, separator='\t',
+                     skip_rows_after_header=1))
+snake = (tweak_river(snake_raw
+           .with_columns(cfs=pl.lit(None).cast(pl.Float64)),
+      cfs_col='cfs', gage_height_col='319803_00065') 
+ )
+```
+
+```{python}
+abc = pl.DataFrame({'b': [1,2,3],
+             'c': [4,5,6],
+             'a': [7,8,9]})
+```
+
+```{python}
+print(abc.with_columns(['a', 'b', 'c']))
+
+```
+
+```{python}
+print(abc.select(['a', 'b', 'c']))
+
+```
+
+```{python}
+common_cols = ['agency_cd', 'site_no', 'datetime', 
+               'cfs', 'gage_height', 'source']
+print(snake
+ .with_columns(source=pl.lit('snake'))
+ .select(common_cols)
+ .vstack(dd
+         .with_columns(source=pl.lit('devil'))
+         .select(common_cols)
+         )
+)
+
+```
+
+```{python}
+common_cols = ['agency_cd', 'site_no', 'datetime', 
+               'cfs', 'gage_height', 'source']
+print(snake
+ .with_columns(source=pl.lit('snake'))
+ .select(common_cols)
+ .vstack(dd
+         .with_columns(source=pl.lit('devil'))
+         .select(common_cols)
+         )
+ .sort('datetime')
+ .group_by_dynamic(index_column='datetime', every='1mo', 
+                   by='source')
+ .agg(pl.col('gage_height').mean())
+)
+
+```
+
+```{python}
+common_cols = ['agency_cd', 'site_no', 'datetime', 
+               'cfs', 'gage_height', 'source']
+print(snake
+ .with_columns(source=pl.lit('snake'))
+ .select(common_cols)
+ .vstack(dd
+         .with_columns(source=pl.lit('devil'))
+         .select(common_cols)
+         )
+ .sort('datetime')
+ .group_by([pl.col('datetime').dt.truncate('1mo'), 'source'])
+ .agg(pl.col('gage_height').mean())
+)
+
+```
+
+```{python}
+common_cols = ['agency_cd', 'site_no', 'datetime', 
+               'cfs', 'gage_height', 'source']
+print(snake
+ .with_columns(source=pl.lit('snake'))
+ .select(common_cols)
+ .vstack(dd
+         .with_columns(source=pl.lit('devil'))
+         .select(common_cols)
+         )
+ .sort('datetime')
+ .group_by_dynamic(index_column='datetime', every='1mo', by='source')
+ .agg(pl.col('gage_height').mean())
+ .pivot(columns='source', index='datetime', values='gage_height')
+)
+
+```
+
+```{python}
+import hvplot
+hvplot.extension('matplotlib')
+common_cols = ['agency_cd', 'site_no', 'datetime', 
+               'cfs', 'gage_height', 'source']
+print(snake
+ .with_columns(source=pl.lit('snake'))
+ .select(common_cols)
+ .vstack(dd
+         .with_columns(source=pl.lit('devil'))
+         .select(common_cols)
+         )
+ .sort('datetime')
+ .group_by_dynamic(index_column='datetime', every='1mo', by='source')
+ .agg(pl.col('gage_height').mean())
+ .pivot(columns='source', index='datetime', values='gage_height')
+ .filter(~pl.all_horizontal(pl.col('devil', 'snake').is_null()))
+ .plot(x='datetime', y=['devil', 'snake'], rot=45, title='Gage Height', 
+       width=1800, height=600)
+) 
+```
+
+##  Window Functions in Polars
+
+```{python}
+print(dd
+ .set_sorted('datetime')  
+ .group_by_dynamic(index_column='datetime', every='1mo')
+ .agg(pl.col('cfs').mean())
+ .with_columns(mean_cfs_3mo=pl.col('cfs').mean()
+               .rolling('datetime', period='3mo'))
+)
+
+```
+
+```{python}
+import hvplot
+hvplot.extension('plotly')
+(dd
+ .set_sorted('datetime')  
+ .group_by_dynamic(index_column='datetime', every='1mo')
+ .agg(pl.col('cfs').mean())
+ .with_columns(mean_cfs_3mo=pl.col('cfs').mean()
+               .rolling('datetime', period='3mo'))
+ .plot(x='datetime', y=['cfs', 'mean_cfs_3mo'])
+) 
+```
+
+```{python}
+cfs_max = 1_000
+(dd
+ .set_sorted('datetime')  
+ .group_by_dynamic(index_column='datetime', every='1mo')
+ .agg(pl.col('cfs').mean())
+ .with_columns(pl.col('cfs').clip(upper_bound=cfs_max),
+               mean_cfs_3mo=pl.col('cfs').mean()
+               .rolling('datetime', period='3mo')
+               .clip(upper_bound=cfs_max))                   
+ .plot(x='datetime', y=['cfs', 'mean_cfs_3mo'])
+) 
+```
+
+## Interpolation
+
+```{python}
+print(dd
+.filter(pl.col('cfs').is_null())
+)
+
+```
+
+```{python}
+import datetime
+import pytz
+denver = pytz.timezone('America/Denver')
+jul_7 = datetime.datetime(2018, 7, 7).replace(tzinfo=denver)
+jul_9 = datetime.datetime(2018, 7, 9).replace(tzinfo=denver)
+
+print(dd
+ .filter(pl.col('datetime').is_between(jul_7, jul_9))
+ .filter(pl.col('cfs').is_null())
+)
+
+```
+
+```{python}
+(dd
+ .filter(pl.col('datetime').is_between(jul_7, jul_9))
+  .plot(x='datetime', y=['cfs'])
+) 
+```
+
+```{python}
+offset = .1
+
+(dd
+ .filter(pl.col('datetime').is_between(jul_7, jul_9))
+ .with_columns(
+    'datetime', 'cfs',
+    fill0=pl.col('cfs').fill_null(0).add(offset),
+    interpolate=pl.col('cfs').interpolate().add(offset*2),
+    forward=pl.col('cfs').fill_null(strategy='forward').add(offset*3),
+    backward=pl.col('cfs').fill_null(strategy='backward').add(offset*4)
+ )
+  .plot(x='datetime', y=['cfs', 'fill0', 'interpolate', 'forward', 
+                         'backward'])
+ ) 
+```
+
+## Upsampling and Downsampling
+
+```{python}
+print(dd
+ .set_sorted('datetime')
+ .upsample('datetime', every='5m')
+ .interpolate()
+ )
+
+```
+
+```{python}
+print(dd
+ .set_sorted('datetime')
+ .group_by_dynamic(index_column='datetime', every='5m')
+ .agg(pl.col('cfs').mean())
+)
+
+```
+
+```{python}
+print(dd
+ .set_sorted('datetime')
+ .group_by_dynamic(index_column='datetime', every='30m')
+ .agg(pl.col('cfs').mean())
+)
+
+```
+
+## Joining Time Series Data
+
+```{python}
+url = 'https://github.com/mattharrison/datasets/raw/master/data/'\
+      'hanksville.csv'
+
+def tweak_temp(df_):
+    return (df_
+        .select(pl.col('DATE').str.to_datetime()
+                  .dt.replace_time_zone('America/Denver'),
+                'PRCP', 'TMIN', 'TMAX', 'TOBS')
+    )
+
+raw_temp = pl.read_csv(url)
+print(tweak_temp(raw_temp))
+
+```
+
+```{python}
+dd_daily = (dd
+ .set_sorted('datetime')
+ .group_by_dynamic(index_column='datetime', every='1d', 
+                   check_sorted=False)
+ .agg(pl.col('gage_height', 'cfs').mean())
+)
+
+print(dd_daily)
+
+```
+
+```{python}
+both = (tweak_temp(raw_temp)
+ .join(dd_daily, left_on='DATE', right_on='datetime',
+       validate='1:1')
+ )
+
+print(both)
+                                                              │
+```
+
+## Visualizing the Merged Data
+
+```{python}
+import holoviews as hv
+hvplot.extension('bokeh')
+year_agg = (both
+ .with_columns(day_of_year=pl.col('DATE')
+                     .dt.strftime('%j').cast(pl.Int16),
+               year=pl.col('DATE').dt.year())
+ .pivot(index='day_of_year', columns='year', values='TOBS')
+ .sort('day_of_year')
+)
+
+p1 = (year_agg
+ .with_columns(
+     pl.col(['2001', '2002', '2003', '2004', '2005', '2006', 
+             '2007', '2008', '2009', '2010', '2011', '2012', 
+             '2014', '2015', '2016', '2017', '2018', '2019',# '2020'
+            ])
+    .rolling_median(7)
+  )
+ .plot(x='day_of_year',  alpha=.5, line_width=1, 
+       color=hv.Palette('Greys'), 
+       title='Weekly Temperature (F)', width=1_000, height=500)
+ )
+
+# make 2020 thicker and blue
+p2 = p1 * (year_agg
+ .select(pl.col('day_of_year', '2020'))
+    .plot(x='day_of_year', y='2020', color='blue', line_width=2, 
+          label='2020')
+)
+
+# add median in red
+p2 * (both
+  .with_columns(day_of_year=pl.col('DATE')
+                      .dt.strftime('%j').cast(pl.Int16),
+                median=pl.lit('Median'))
+ .pivot(index='day_of_year', columns='median', values='TOBS', 
+        aggregate_function='median')
+ .sort('day_of_year')
+    .plot(x='day_of_year', y='Median', c='r', label='Median')
+ )  
+```
+
+```{python}
+def plot_year_last_year_median(df, col, upper_limit=None, 
+                               lower_limit=None, width=1_000, 
+                               height=500):
+      if upper_limit is None:
+            upper_limit = df[col].max()
+
+      year_agg = (df
+      .with_columns(day_of_year=pl.col('DATE')
+                          .dt.strftime('%j').cast(pl.Int16),
+                    year=pl.col('DATE').dt.year())
+      .pivot(index='day_of_year', columns='year', values=col)
+      .sort('day_of_year')
+      )
+   
+      # previous years in grey thin lines
+      p1 = (year_agg
+      .with_columns(pl.col(
+          ['2001', '2002', '2003', '2004', '2005', '2006', 
+           '2007', '2008', '2009', '2010', '2011', '2012', 
+           '2014', '2015', '2016', '2017', '2018', '2019',# '2020'
+          ])
+         .rolling_median(7).clip(upper_bound=upper_limit))
+      .plot(x='day_of_year', alpha=1, color=hv.Palette('Greys'), 
+            line_width=.5, width=width, height=height)
+      )
+
+      # make 2020 thicker and blue
+      p2 = p1*(year_agg
+      .select('day_of_year', pl.col('2020')
+                     .rolling_median(7).clip(upper_bound=upper_limit))      
+         .plot(x='day_of_year', y='2020', color='blue', line_width=2, 
+               title=f'Weekly {col}', label='2020')
+      )
+   
+      # add median in red
+      p3 = p2*(df
+         .with_columns(day_of_year=pl.col('DATE')
+                         .dt.strftime('%j').cast(pl.Int16),
+                       median=pl.lit('Median'))
+      .pivot(index='day_of_year', columns='median', values=col, 
+             aggregate_function='median')
+      .sort('day_of_year')
+      .with_columns(pl.col('Median')
+                     .rolling_mean(7).clip(upper_bound=upper_limit))      
+         .plot(x='day_of_year', y='Median', color='red', label='Median')
+      )
+      return p3
+```
+
+```{python}
+plot_year_last_year_median(both, 'cfs', upper_limit=200)    
+```
+
+## Chapter Methods and Functions
+
+## Summary
+
+## Exercises
+
+# Data Import and Export
+
+## Introduction
+
+## Importing Data
+
+```{python}
+import polars as pl
+path = 'data/vehicles.csv'
+raw = pl.read_csv(path, null_values=['NA'])
+
+def tweak_auto(df):
+  cols = ['year', 'make', 'model', 'displ', 'cylinders', 'trany', 
+          'drive','VClass', 'fuelType', 'barrels08', 'city08', 
+          'highway08', 'createdOn']
+  return (df
+  .select(pl.col(cols))
+  .with_columns(pl.col('year').cast(pl.Int16),
+       pl.col(['cylinders', 'highway08', 'city08']).cast(pl.UInt8),
+       pl.col(['displ', 'barrels08']).cast(pl.Float32),
+       pl.col(['make', 'model', 'VClass', 'drive', 'fuelType'])
+         .cast(pl.Categorical),
+       pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
+       is_automatic=pl.col('trany').str.contains('Auto'),
+       num_gears=pl.col('trany').str.extract(r'(\d+)').cast(pl.Int8)
+       )
+   )
+
+
+autos = tweak_auto(raw)
+```
+
+## Exporting to CSV
+
+```{python}
+print(autos
+ .head(3)          
+ .write_csv()
+)          
+
+```
+
+```{python}
+print(autos
+ .head(3)          
+ .write_csv(float_precision=2)
+)          
+
+```
+
+## Exporting to JSON
+
+```{python}
+import pprint
+import json
+pprint.pprint(json.loads(
+   autos.head(2)
+       .write_json()))
+
+```
+
+## Reading JSON
+
+```{python}
+from io import StringIO
+print(pl.read_json(StringIO(autos.write_json())))
+
+```
+
+```{python}
+autos.head(3).to_pandas().to_json('/tmp/pd.json', orient='records')
+```
+
+```{python}
+import pprint
+import json
+pprint.pprint(json.loads(autos.head(2)
+       .to_pandas().to_json(orient='records')))
+
+```
+
+```{python}
+from_pd = pl.read_json('/tmp/pd.json')
+print(from_pd)
+
+```
+
+```{python}
+print(from_pd
+ .with_columns(createdOn=pl.from_epoch('createdOn', time_unit='s'))
+)
+
+```
+
+## Custom JSON Handling
+
+```{python}
+import pprint
+import json
+pprint.pprint(json.loads(autos.head(2)
+       .to_pandas().to_json()))
+
+```
+
+```{python}
+import io
+print(pl.read_json(io.StringIO(autos.head(2).to_pandas().to_json())))
+
+```
+
+```{python}
+print(pl.DataFrame({
+    'num': [1, 2, 3], 
+    'listy': [[1, 2], [3, 4], [5, 6]],
+    'structy': [{'a': 1, 'b': 2}, {'a': 3, 'b': 4}, 
+                {'a': 5, 'b': 6}],
+    }
+    )
+)
+
+```
+
+```{python}
+print(pl.DataFrame({
+    'num': [1, 2, 3], 
+    'listy': [[1, 2], [3, 4], [5, 6]],
+    'structy': [{'a': 1, 'b': 2}, {'a': 3, 'b': 4}, {'a': 5, 'b': 6}],
+    }
+    )
+   .explode('listy')
+)
+
+```
+
+```{python}
+print(pl.DataFrame({
+    'num': [1, 2, 3], 
+    'listy': [[1, 2], [3, 4], [5, 6]],
+    'structy': [{'a': 1, 'b': 2}, {'a': 3, 'b': 4}, {'a': 5, 'b': 6}],
+    }
+    )
+   .explode('structy')
+)
+# Traceback (most recent call last)
+#   ...
+# InvalidOperationError: `explode` operation not supported for dtype
+#      `struct[2]`
+```
+
+```{python}
+print(pl.DataFrame({
+    'num': [1, 2, 3], 
+    'listy': [[1, 2], [3, 4], [5, 6]],
+    'structy': [{'a': 1, 'b': 2}, {'a': 3, 'b': 4}, {'a': 5, 'b': 6}]})
+   .with_columns(structy=pl.col('structy').map_elements(
+       lambda d: list(d.values())
+       )
+    )
+)
+
+```
+
+```{python}
+import io
+print(pl.read_json(io.StringIO(autos.to_pandas().to_json()))
+ .with_columns(pl.all().map_elements(lambda d: list(d.values())))
+ .explode(pl.all())
+ .with_columns(createdOn=pl.from_epoch('createdOn', time_unit='s'))
+)
+
+```
+
+## Munging JSON
+
+```{python}
+pprint.pprint(json.loads(autos.head(2).to_pandas()
+                          .to_json(orient='split')))
+
+```
+
+```{python}
+print(pl.read_json(io.StringIO(autos.to_pandas()
+                                .to_json(orient='split'))))
+
+```
+
+```{python}
+import json
+
+def split_json_to_dict(json_str):
+    """ Convert pandas "split" json to a sequence of dictionaries
+    representing the rows of the dataframe.
+    """
+    data = json.loads(json_str)
+    columns = data['columns']
+    for row in data['data']:
+        yield dict(zip(columns, row))
+```
+
+```{python}
+print(pl.DataFrame(
+   split_json_to_dict(autos.to_pandas().to_json(orient='split'))))
+
+```
+
+## Exporting to Excel
+
+```{python}
+(autos
+ .head(3)
+ .write_excel('/tmp/autos.xlsx')
+) 
+```
+
+```{python}
+a3 = (pl.read_excel('/tmp/autos.xlsx'))
+print(a3)
+
+```
+
+## Exporting to Parquet
+
+```{python}
+(autos
+.head(3)
+.write_parquet('/tmp/a3.parquet')
+)
+
+import pandas as pd
+pd.read_parquet('/tmp/a3.parquet').to_parquet('/tmp/a4.parquet')
+
+a4 = pl.read_parquet('/tmp/a4.parquet')
+print(a4)
+
+```
+
+```{python}
+autos.head(3).equals(a4)
+# True
+```
+
+```{python}
+(autos
+.head(3)
+.select(pl.all().shrink_dtype())     
+.write_parquet('/tmp/a3-shrink.parquet')
+)
+```
+
+## Exporting to SQL
+
+```{python}
+import sqlite3
+with sqlite3.connect('/tmp/vehicles.db') as conn:
+    uri = 'sqlite:////tmp/vehicles.db'
+    autos.head(3).write_database(table_name='autos', connection=uri, 
+                                 if_table_exists='replace')
+```
+
+```{python}
+from sqlalchemy import create_engine
+uri = 'sqlite:////tmp/vehicles.db'
+with create_engine(uri).connect() as conn:
+    query = 'SELECT * FROM autos'
+    a4 = pl.read_database(query=query, connection=conn)
+```
+
+```{python}
+print(a4)
+
+```
+
+## Using Arrow to Convert DataFrames
+
+```{python}
+import duckdb
+sql = '''SELECT mean(city08) AS mean_city08,
+      mean(highway08) AS mean_highway08,
+      year
+FROM autos
+GROUP BY year'''
+
+agg = duckdb.sql(sql)
+print(agg)
+
+```
+
+```{python}
+pd_agg = agg.pl().to_pandas()
+print(pd_agg)
+
+```
+
+```{python}
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(figsize=(10, 5))
+(agg
+ .pl()
+ .to_pandas()
+ .set_index('year')
+ .plot(ax=ax, title='Average MPG by Year'))
+fig.savefig('img/agg1.png', bbox_inches='tight')
+```
+
+```{python}
+import duckdb
+import matplotlib.pyplot as plt
+
+autos = tweak_auto(raw)
+sql = '''SELECT mean(city08) AS mean_city08,
+      mean(highway08) AS mean_highway08,
+      year
+FROM autos
+GROUP BY year
+ORDER BY year'''
+agg = duckdb.sql(sql)
+fig, ax = plt.subplots(figsize=(10, 5))
+(agg
+ .pl()
+ .to_pandas()
+ .set_index('year')
+ .plot(ax=ax, title='Average MPG by Year'))
+
+```
+
+## Converting to Pandas
+
+```{python}
+autos2 = (autos.to_pandas(use_pyarrow_extension_array=True)
+ .pipe(pl.from_pandas)
+)
+```
+
+```{python}
+autos2.equals(autos)
+
+```
+
+## Working with Other Libraries
+
+## Using XGBoost to Predict Mileage
+
+```{python}
+import polars.selectors as cs
+X = (autos
+ .select(cs.numeric() - cs.matches('(city08|highway08)'))
+)
+y = (autos.select(pl.col('city08')))
+```
+
+```{python}
+print(X)
+
+```
+
+```{python}
+print(y)
+
+```
+
+```{python}
+import xgboost as xgb
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y)
+xg = xgb.XGBRegressor()
+xg.fit(X_train, y_train)
+xg.score(X_test, y_test)
+
+```
+
+## Plotting Residuals with Matplotlib
+
+```{python}
+residuals = y_test.to_series() - xg.predict(X_test) 
+print(residuals)
+
+```
+
+```{python}
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(figsize=(10, 5))
+ax.scatter(y_test, residuals)
+
+```
+
+```{python}
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(figsize=(10, 5))
+ax.scatter(pl.DataFrame(xg.predict(X_test)) , residuals, alpha=0.1)
+ax.set_title('City MPG Residuals vs. Predicted City MPG')
+ax.set_xlabel('Predicted City MPG')
+ax.set_ylabel('Residuals')
+
+```
+
+## PCA of the Autos Data
+
+```{python}
+from sklearn import preprocessing, decomposition
+import sklearn
+sklearn.set_config(transform_output='polars')
+std = preprocessing.StandardScaler()
+X_std = std.fit_transform(
+   autos.select(pl.col(['displ', 'cylinders', 'barrels08', 'city08', 
+                        'highway08'])
+      .fill_null(0)))
+pca = decomposition.PCA(n_components=2)
+res = pca.fit_transform(X_std)
+```
+
+```{python}
+print(res)
+
+```
+
+```{python}
+def fix_naming(name):
+    return f'{name.upper()[:2]}{int(name[-1])+1}'   
+(res
+.rename(fix_naming)
+.with_columns(color=autos['cylinders'])
+.plot.scatter('PC1', 'PC2', color='color',
+    title='PCA of Autos', cmap='viridis')
+)
+
+# :Scatter   [PC1]   (PC2,color)
+```
+
+## Configuration
+
+```{python}
+import polars as pl 
+pl.Config.set_tbl_width_chars(70)
+pl.Config.set_float_precision(2)
+pl.Config.set_tbl_cols(6)
+```
+
+```{python}
+with pl.Config(set_tbl_width_chars=70):
+    print(df)
+```
+
+## Chapter Methods and Functions
+
+## Summary
+
+## Exercises
+
+# Being Lazy and Streaming
+
+## Loading Data
+
+```{python}
+     pl.when(pl.col('make') == 'Chevrolet')
+     .then('USA')
+     .when(pl.col('make') == 'Ford')
+     .then('USA')
+        ...
+     .when(pl.col('make') == 'Tesla')
+     .then('USA')
+     .otherwise('Unknown')
+```
+
+```{python}
+import polars as pl
+
+def make_to_origin_expr(make_col):
+    # Dictionary mapping car makes to countries of origin
+    origin_dict = {
+        'Chevrolet': 'USA',
+        'Ford': 'USA',
+        'Dodge': 'USA',
+        'GMC': 'USA',
+        'Toyota': 'Japan',
+        'BMW': 'Germany',
+        'Mercedes-Benz': 'Germany',
+        'Nissan': 'Japan',
+        'Volkswagen': 'Germany',
+        'Mitsubishi': 'Japan',
+        'Porsche': 'Germany',
+        'Mazda': 'Japan',
+        'Audi': 'Germany',
+        'Honda': 'Japan',
+        'Jeep': 'USA',
+        'Pontiac': 'USA',
+        'Subaru': 'Japan',
+        'Volvo': 'Sweden',
+        'Hyundai': 'South Korea',
+        'Chrysler': 'USA',
+        'Tesla': 'USA'
+    }
+    expr = None
+    col = pl.col(make_col)
+    for k, v in origin_dict.items():
+        if expr is None:
+            expr = pl.when(col == k).then(pl.lit(v))
+        else:
+            expr = expr.when(col == k).then(pl.lit(v))
+    expr = expr.otherwise(pl.lit('Unknown'))
+    return expr
+
+df_pl = pl.read_csv('data/vehicles.csv', null_values='NA')
+
+result = (df_pl
+      .with_columns(
+            pl.col('createdOn')
+                   .str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
+            origin=make_to_origin_expr('make'))
+      .filter((pl.col("origin") != "Unknown") & (pl.col("year") < 2020))
+      .select(['make', 'model', 'year', 'city08', 'highway08', 
+               'origin', 'createdOn'])
+      .group_by(['origin', 'year'])
+      .agg(avg_city08=pl.col("city08").mean())
+      .pivot(index='year', columns='origin', values='avg_city08')
+      .sort('year')
+)
+
+print(result)
+
+```
+
+```{python}
+%%timeit
+df_pl = pl.read_csv('data/vehicles.csv', null_values='NA')
+result = (df_pl
+     .with_columns(
+            pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
+            origin=make_to_origin_expr('make'))
+     .filter((pl.col("origin") != "Unknown") & (pl.col("year") < 2020))
+     .select(['make', 'model', 'year', 'city08', 'highway08', 'origin', 
+              'createdOn'])
+     .group_by(['origin', 'year'])
+     .agg(avg_city08=pl.col("city08").mean())
+     .pivot(index='year', columns='origin', values='avg_city08')
+     .sort('year')
+)
+```
+
+## The replace Method
+
+```{python}
+def make_to_origin_replace(make_col):
+    origin_dict = {
+        'Chevrolet': 'USA',
+        'Ford': 'USA',
+        'Dodge': 'USA',
+        'GMC': 'USA',
+        'Toyota': 'Japan',
+        'BMW': 'Germany',
+        'Mercedes-Benz': 'Germany',
+        'Nissan': 'Japan',
+        'Volkswagen': 'Germany',
+        'Mitsubishi': 'Japan',
+        'Porsche': 'Germany',
+        'Mazda': 'Japan',
+        'Audi': 'Germany',
+        'Honda': 'Japan',
+        'Jeep': 'USA',
+        'Pontiac': 'USA',
+        'Subaru': 'Japan',
+        'Volvo': 'Sweden',
+        'Hyundai': 'South Korea',
+        'Chrysler': 'USA',
+        'Tesla': 'USA'
+    }   
+    return make_col.replace(origin_dict, default='Unknown')
+
+result = (df_pl
+    .with_columns(
+       pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
+       origin=make_to_origin_replace(pl.col('make')))
+    .filter((pl.col("origin") != "Unknown") & (pl.col("year") < 2020))
+    .select(['make', 'model', 'year', 'city08', 'highway08', 'origin',
+             'createdOn'])
+    .group_by(['origin', 'year'])
+    .agg(avg_city08=pl.col("city08").mean())
+    .pivot(index='year', columns='origin', values='avg_city08')
+    .sort('year')
+)
+```
+
+```{python}
+%%timeit
+df_pl = pl.read_csv('data/vehicles.csv', null_values='NA')
+result = (df_pl
+    .with_columns(
+            pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
+            origin=make_to_origin_replace(pl.col('make')))
+    .filter((pl.col("origin") != "Unknown") & (pl.col("year") < 2020))
+    .select(['make', 'model', 'year', 'city08', 'highway08', 'origin', 
+             'createdOn'])
+    .group_by(['origin', 'year'])
+    .agg(avg_city08=pl.col("city08").mean())
+    .pivot(index='year', columns='origin', values='avg_city08')
+    .sort('year')
+)
+
+```
+
+## Lazy Version Take One
+
+```{python}
+df_pl_lazy = pl.scan_csv('data/vehicles.csv', null_values='NA')
+result = (df_pl_lazy
+     .with_columns(
+         pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
+         origin=make_to_origin_replace(pl.col('make')))
+     .filter((pl.col("origin") != "Unknown") & (pl.col("year") < 2020))
+     .select(['make', 'model', 'year', 'city08', 'highway08', 'origin', 
+                 'createdOn'])
+     .group_by(['origin', 'year'])
+     .agg(avg_city08=pl.col("city08").mean())
+     .pivot(index='year', columns='origin', values='avg_city08')
+     .sort('year')
+)
+
+print(result)
+# Traceback (most recent call last)
+#   ...
+# AttributeError: 'LazyFrame' object has no attribute 'pivot'
+```
+
+```{python}
+df_pl_lazy = pl.scan_csv('data/vehicles.csv', null_values='NA')
+
+result = (df_pl_lazy
+     .with_columns(
+         pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
+         origin=make_to_origin_replace(pl.col('make')))
+     .filter((pl.col("origin") != "Unknown") & (pl.col("year") < 2020))
+     .select(['make', 'model', 'year', 'city08', 'highway08', 'origin', 
+                 'createdOn'])
+     .group_by(['origin', 'year'])
+     .agg(avg_city08=pl.col("city08").mean())
+     .collect()
+     .pivot(index='year', columns='origin', values='avg_city08')
+     .sort('year')
+)
+
+print(result)
+
+```
+
+```{python}
+%%timeit
+df_pl_lazy = pl.scan_csv('data/vehicles.csv', null_values='NA')
+
+result = (df_pl_lazy
+     .with_columns(
+         pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
+         origin=make_to_origin_replace(pl.col('make')))
+     .filter((pl.col("origin") != "Unknown") & (pl.col("year") < 2020))
+     .select(['make', 'model', 'year', 'city08', 'highway08', 'origin', 
+                 'createdOn'])
+     .group_by(['origin', 'year'])
+     .agg(avg_city08=pl.col("city08").mean())
+     .collect()
+     .pivot(index='year', columns='origin', values='avg_city08')
+     .sort('year')
+)
+
+```
+
+## Fetching Data
+
+```{python}
+df_pl_lazy = pl.scan_csv('data/vehicles.csv', null_values='NA')
+
+result = (df_pl_lazy
+     .with_columns(
+         pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
+         origin=make_to_origin_replace(pl.col('make')))
+     .filter((pl.col("origin") != "Unknown") & (pl.col("year") < 2020))
+     .select(['make', 'model', 'year', 'city08', 'highway08', 'origin', 
+                 'createdOn'])
+     .group_by(['origin', 'year'])
+     .agg(avg_city08=pl.col("city08").mean())
+     #.collect()
+     .fetch(5)
+     .pivot(index='year', columns='origin', values='avg_city08')
+     .sort('year')
+)
+
+print(result)
+
+```
+
+## Pandas Comparison
+
+```{python}
+%%timeit
+import pandas as pd
+def make_to_origin(make):
+    """
+    Convert car make to country of origin.
+    
+    Args:
+        make (str): Car make.
+        
+    Returns:
+        str: Country of origin.
+    """
+    # Dictionary mapping car makes to countries of origin
+    origin_dict = {
+        'Chevrolet': 'USA',
+        'Ford': 'USA',
+        'Dodge': 'USA',
+        'GMC': 'USA',
+        'Toyota': 'Japan',
+        'BMW': 'Germany',
+        'Mercedes-Benz': 'Germany',
+        'Nissan': 'Japan',
+        'Volkswagen': 'Germany',
+        'Mitsubishi': 'Japan',
+        'Porsche': 'Germany',
+        'Mazda': 'Japan',
+        'Audi': 'Germany',
+        'Honda': 'Japan',
+        'Jeep': 'USA',
+        'Pontiac': 'USA',
+        'Subaru': 'Japan',
+        'Volvo': 'Sweden',
+        'Hyundai': 'South Korea',
+        'Chrysler': 'USA',
+        'Tesla': 'USA'
+    }
+    
+    return origin_dict.get(make, "Unknown")
+
+df_pd = pd.read_csv('data/vehicles.csv', 
+                 engine='pyarrow', dtype_backend='pyarrow')
+
+(df_pd
+ .assign(origin=lambda df: df['make'].apply(make_to_origin),
+         # replace EST and EDT with offset in createdOn
+        createdOn=lambda df: df['createdOn']
+           .str.replace('EDT', '-04:00').str.replace('EST', '-05:00')
+ )
+ .assign(
+        createdOn=lambda df: pd.to_datetime(df['createdOn'], 
+            format='%a %b %d %H:%M:%S %z %Y', utc=True),
+ )
+ .query('origin != "Unknown" and year < 2020')
+ .loc[:, ['make', 'model', 'year', 'city08', 'highway08', 'origin',
+          'createdOn']]
+    .groupby(['origin', 'year'])
+    .city08
+    .mean()
+    .unstack('origin')
+ )
+```
+
+## Viewing Plans
+
+```{python}
+df_pl_lazy = pl.scan_csv('data/vehicles.csv', null_values='NA')
+
+print(df_pl_lazy
+     .with_columns(
+         pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
+         origin=make_to_origin_replace(pl.col('make')))
+     .filter((pl.col("origin") != "Unknown") & (pl.col("year") < 2020))
+     .select(['make', 'model', 'year', 'city08', 'highway08', 'origin', 
+                 'createdOn'])
+     .group_by(['origin', 'year'])
+     .agg(avg_city08=pl.col("city08").mean())
+     #.collect()
+)
+# naive plan: (run LazyFrame.explain(optimized=True) to see the optimized
+#      plan)
+
+# AGGREGATE
+# 	[col("city08").mean().alias("avg_city08")] BY [col("origin"),
+#      col("year")] FROM
+#    SELECT [col("make"), col("model"), col("year"), col("city08"),
+#      col("highway08"), col("origin"), col("createdOn")] FROM
+#     FILTER [([(col("origin")) != (String(Unknown))]) & ([(col("year")) <
+#      (2020)])] FROM
+
+#      WITH_COLUMNS:
+#      [col("createdOn").str.strptime([String(raise)]),
+#      col("make").replace([Series, Series, String(Unknown)]).alias("origin")]
+
+#         Csv SCAN data/vehicles.csv
+#         PROJECT */83 COLUMNS
+```
+
+```{python}
+df_pl_lazy = pl.scan_csv('data/vehicles.csv', null_values='NA')
+
+print(df_pl_lazy
+     .with_columns(
+         pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
+         origin=make_to_origin_replace(pl.col('make')))
+     .filter((pl.col("origin") != "Unknown") & (pl.col("year") < 2020))
+     .select(['make', 'model', 'year', 'city08', 'highway08', 'origin', 
+                 'createdOn'])
+     .group_by(['origin', 'year'])
+     .agg(avg_city08=pl.col("city08").mean())
+     .explain()
+     #.collect()
+)
+# AGGREGATE
+# 	[col("city08").mean().alias("avg_city08")] BY [col("origin"),
+#      col("year")] FROM
+#   FAST_PROJECT: [year, city08, origin]
+#     FILTER [([(col("origin")) != (String(Unknown))]) & ([(col("year")) <
+#      (2020)])] FROM
+
+#      WITH_COLUMNS:
+#      [col("make").replace([Series, Series,
+#      String(Unknown)]).alias("origin")]
+
+#         Csv SCAN data/vehicles.csv
+#         PROJECT 3/83 COLUMNS
+```
+
+```{python}
+.select(['make', 'model', 'year', 'city08', 'highway08', 'origin', 
+         'createdOn'])
+```
+
+## Streaming
+
+```{python}
+factor = 400
+df_pl_lazy = pl.scan_csv(['data/vehicles.csv']*factor, null_values='NA')
+print(df_pl_lazy
+     .with_columns(
+         pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'),
+         origin=make_to_origin_replace(pl.col('make')))
+     .filter((pl.col("origin") != "Unknown") & (pl.col("year") < 2020))
+     .select(['make', 'model', 'year', 'city08', 'highway08', 'origin', 
+                 'createdOn'])
+     .group_by(['origin', 'year'])
+     .agg(avg_city08=pl.col("city08").mean())
+     .collect(streaming=True)
+     .pivot(index='year', columns='origin', values='avg_city08')
+     .sort('year')
+)
+```
+
+```{python}
+origin = make_to_origin_expr('make')
+```
+
+```{python}
+origin = pl.col('make').map_elements(make_to_origin)
+```
+
+## Chapter Methods and Functions
+
+## Summary
+
+## Exercises
+
+# Porting from Pandas
+
+## The Code
+
+```{python}
+# Chapter 13: Portfolio Management System
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import yfinance as yf
+
+
+K = 1000000
+lot = 100
+port_tickers = ['QCOM','TSLA','NFLX','DIS','PG', 'MMM','IBM','BRK-B',
+                'UPS','F']
+bm_ticker = '^GSPC'
+ticker_list = [bm_ticker] + port_tickers
+df_data= { 
+'Beta':[1.34,2,0.75,1.2,0.41,0.95,1.23,0.9,1.05,1.15],
+'Shares':[-1900,-100,-400,-800,-5500,1600,1800,2800,1100,20800],
+'rSL':[42.75,231,156,54.2,37.5,42.75,29.97,59.97,39.97,2.10]
+}
+port = pd.DataFrame(df_data,index=port_tickers)
+port['Side'] = np.sign(port['Shares'])
+
+raw_data = pd.read_csv('data/raw-yfinance.csv', index_col=0, header=[0,1])
+price_df = round(raw_data['Close'], 2)
+
+bm_cost = price_df[bm_ticker][0]
+bm_price = price_df[bm_ticker][-1]
+
+port['rCost'] = round(price_df.iloc[0,:].div(bm_cost) *1000, 2)
+port['rPrice'] = round(price_df.iloc[-1,:].div(bm_price) *1000, 2)
+port['Cost'] = price_df.iloc[0,:]
+port['Price'] = price_df.iloc[-1,:]
+```
+
+```{python}
+print(port)
+
+```
+
+```{python}
+price_df['bm returns'] = round(np.exp(np.log(price_df[bm_ticker]/
+                        price_df[bm_ticker].shift()).cumsum()) - 1, 3)
+rel_price = round(price_df.div(price_df['^GSPC'],axis=0 )*1000,2)
+
+rMV = rel_price.mul(port['Shares'])
+rLong_MV = rMV[rMV >0].sum(axis=1)
+rShort_MV = rMV[rMV <0].sum(axis=1)
+rMV_Beta = rMV.mul(port['Beta'])
+rLong_MV_Beta = rMV_Beta[rMV_Beta >0].sum(axis=1) / rLong_MV
+rShort_MV_Beta = rMV_Beta[rMV_Beta <0].sum(axis=1)/ rShort_MV
+
+price_df['rNet_Beta'] = rLong_MV_Beta - rShort_MV_Beta
+price_df['rNet'] = round((rLong_MV + rShort_MV)
+                         .div(abs(rMV).sum(axis=1)),3)
+
+price_df['rReturns_Long'] = round(
+    np.exp(np.log(rLong_MV/rLong_MV.shift()).cumsum())-1,3)
+price_df['rReturns_Short'] = - round(
+    np.exp(np.log(rShort_MV/rShort_MV.shift()).cumsum())-1,3)
+price_df['rReturns'] = price_df['rReturns_Long'] + \
+    price_df['rReturns_Short']
+
+MV = price_df.mul(port['Shares'])
+Long_MV = MV[MV >0].sum(axis=1)
+Short_MV = MV[MV <0].sum(axis=1)
+price_df['Gross'] = round((Long_MV - Short_MV).div(K),3)
+price_df['Net'] = round((Long_MV + Short_MV).div(abs(MV).sum(axis=1)),3)
+
+price_df['Returns_Long'] = round(
+    np.exp(np.log(Long_MV/Long_MV.shift()).cumsum())-1,3)
+price_df['Returns_Short'] = -round(
+    np.exp(np.log(Short_MV/Short_MV.shift()).cumsum())-1,3)
+price_df['Returns'] = price_df['Returns_Long'] + price_df['Returns_Short']
+
+MV_Beta = MV.mul(port['Beta'])
+Long_MV_Beta = MV_Beta[MV_Beta >0].sum(axis=1) / Long_MV
+Short_MV_Beta = MV_Beta[MV_Beta <0].sum(axis=1)/ Short_MV
+price_df['Net_Beta'] = Long_MV_Beta - Short_MV_Beta
+```
+
+```{python}
+print(price_df)
+
+```
+
+## Multiplication Diversion
+
+```{python}
+import pandas as pd
+days = pd.Series([10, 11, 9], index=['Suzy', 'Bob', 'Alice'])
+daily_consumption = pd.DataFrame({'Suzy': [.2, .9, .1],
+                                  'Bob': [.3, .2, .8],
+                                  'Alice': [.5, .1, .1],
+                                  'Joe': [.1, .8, .0]},
+ index=['meat', 'plants', 'dairy'])
+
+print(days)
+
+```
+
+```{python}
+print(daily_consumption)
+
+```
+
+```{python}
+print(daily_consumption * days)
+
+```
+
+```{python}
+import polars as pl
+days_pl = pl.DataFrame(days.reset_index())
+print(days_pl)
+
+```
+
+```{python}
+daily_consumption_pl = pl.DataFrame(daily_consumption.reset_index())
+print(daily_consumption_pl)
+
+```
+
+```{python}
+print(daily_consumption_pl * days_pl)
+# Traceback (most recent call last)
+#   ...
+# PanicException: data types don't match: InvalidOperation(ErrString("mul
+#      operation not supported for dtypes `str` and `str`"))
+```
+
+```{python}
+[(name,i, val) for i, (name, val) in enumerate(days_pl.iter_rows())]
+# [('Suzy', 0, 10), ('Bob', 1, 11), ('Alice', 2, 9)]
+```
+
+```{python}
+print(daily_consumption_pl
+ .with_columns([pl.col(name) * val 
+           for i, (name, val) in enumerate(days_pl.iter_rows())])
+)
+
+```
+
+```{python}
+days_dict = days.to_dict()
+days_dict
+
+```
+
+```{python}
+print(daily_consumption_pl
+ .with_columns(pl.col(name) * val 
+           for name, val in days_dict.items())
+)
+
+```
+
+## Leveraging AI
+
+## Code Review
+
+## Enhancing Your Coding Process
+
+## Analyzing Raw Data
+
+```{python}
+K = 1000000
+lot = 100
+port_tickers = ['QCOM','TSLA','NFLX','DIS','PG', 'MMM','IBM','BRK-B',
+                'UPS','F']
+bm_ticker = '^GSPC'
+ticker_list = [bm_ticker] + port_tickers
+df_data= { 
+'Beta':[1.34,2,0.75,1.2,0.41,0.95,1.23,0.9,1.05,1.15],
+'Shares':[-1900,-100,-400,-800,-5500,1600,1800,2800,1100,20800],
+'rSL':[42.75,231,156,54.2,37.5,42.75,29.97,59.97,39.97,2.10]
+}
+port = pd.DataFrame(df_data,index=port_tickers)
+port['Side'] = np.sign(port['Shares'])
+
+raw_data = pd.read_csv('data/raw-yfinance.csv', index_col=0, header=[0,1])
+
+price_df = round(raw_data['Close'],2)
+```
+
+## Creating a get_price Function
+
+```{python}
+import polars as pl
+import polars.selectors as cs
+def get_price():
+   # read first two rows to get headers
+   head_df = pl.read_csv('data/raw-yfinance.csv', n_rows=2)
+   # get tickers from first row
+   cols = ['_'.join([a, str(b)]) 
+           for a, b in zip(head_df.columns, head_df.row(0))]
+   return (pl.read_csv('data/raw-yfinance.csv', has_header=False, 
+                       skip_rows=3, new_columns=cols)
+     # convert first column to datetime
+     .with_columns(pl.col('_None')
+                   .str.to_datetime('%Y-%m-%d %H:%M:%S%z'))
+    .rename({'_None': 'Date'})
+     # columns starting with Close
+    .select(cs.matches(r'^(Date|Close.*)'))
+    # rename columns, take value after last _
+    .pipe(lambda df_: df_.rename(dict(zip(df_.columns, 
+               [c.split('_')[-1] for c in df_.columns]))))
+)
+print(get_price())
+
+```
+
+```{python}
+price_pl = get_price()
+cols = price_pl.columns
+price_pl.equals(pl.DataFrame(price_df
+ .reset_index()
+ .astype({'Date': 'datetime64[ns, UTC]'})
+ .loc[:, cols])
+)
+# False
+```
+
+```{python}
+import polars.testing as pt
+pt.assert_frame_equal(price_pl,
+ pl.DataFrame(price_df
+ .reset_index()
+ .astype({'Date': 'datetime64[ns, UTC]'})
+ .loc[:, cols])
+)
+# Traceback (most recent call last)
+#   ...
+# AssertionError: DataFrames are different (dtypes do not match)
+# [left]:  {'Date': Datetime(time_unit='us', time_zone='UTC'), 'BRK-B':
+#      Float64, 'DIS': Float64, 'F': Float64, 'IBM': Float64, 'MMM':
+#      Float64,...
+# [right]: {'Date': Datetime(time_unit='ns', time_zone='UTC'), 'BRK-B':
+#      Float64, 'DIS': Float64, 'F': Float64, 'IBM': Float64, 'MMM':
+#      Float64,...
+```
+
+```{python}
+import polars as pl
+import polars.selectors as cs
+def get_price():
+   # read first two rows to get headers
+   head_df = pl.read_csv('data/raw-yfinance.csv', n_rows=2)
+   # get tickers from first row
+   cols = ['_'.join([a, str(b)]) 
+           for a, b in zip(head_df.columns, head_df.row(0))]
+   return (pl.read_csv('data/raw-yfinance.csv', has_header=False, 
+                       skip_rows=3, new_columns=cols)
+     # convert first column to datetime
+     .with_columns(pl.col('_None').str.to_datetime('%Y-%m-%d %H:%M:%S%z'))
+    .rename({'_None': 'Date'})
+     # columns starting with Close
+    .select(cs.matches(r'^(Date|Close.*)'))
+    # rename columns, take value after last _
+    .pipe(lambda df_: df_.rename(dict(zip(df_.columns, 
+                       [c.split('_')[-1] for c in df_.columns]))))
+    .with_columns(pl.col('Date')
+                    .cast(pl.Datetime(time_unit='ns', time_zone='UTC')))
+)
+tick_mine = get_price()
+tick_from_pd = pl.DataFrame(price_df.reset_index().astype(
+   {'Date': 'datetime64[ns, UTC]'})
+ .loc[:, tick_mine.columns])
+pt.assert_frame_equal(tick_mine, tick_from_pd)
+# Traceback (most recent call last)
+#   ...
+# AssertionError: DataFrames are different (value mismatch for column
+#      'DIS')
+# [left]:  [86.66999816894531, 88.01000213623047, 86.37000274658203,
+#      84.16999816894531, 87.18000030517578, 86.87999725341797,
+#      88.9700012207031...
+# [right]: [86.67, 88.01, 86.37, 84.17, 87.18, 86.88, 88.97, 91.98, 91.92,
+#      93.92, 94.77, 95.56, 96.33, 99.81, 99.4, 99.91, 99.04, 99.08, 103.4...
+```
+
+```{python}
+import polars as pl
+import polars.selectors as cs
+def get_price():
+   # read first two rows to get headers
+   head_df = pl.read_csv('data/raw-yfinance.csv', n_rows=2)
+   # get tickers from first row
+   cols = ['_'.join([a, str(b)]) 
+           for a, b in zip(head_df.columns, head_df.row(0))]
+   return (pl.read_csv('data/raw-yfinance.csv', has_header=False, 
+                       skip_rows=3, new_columns=cols)
+    # convert first column to datetime
+    .with_columns(pl.col('_None').str.to_datetime('%Y-%m-%d %H:%M:%S%z'))
+    .rename({'_None': 'Date'})
+    # columns starting with Close
+    .select(cs.matches(r'^(Date|Close.*)'))
+    # rename columns, take value after last _
+    .pipe(lambda df_: df_.rename(dict(zip(df_.columns, 
+                       [c.split('_')[-1] for c in df_.columns]))))
+    .with_columns(pl.col('Date')
+                    .cast(pl.Datetime(time_unit='ns', time_zone='UTC')))
+    .with_columns(cs.float().round(2))
+)
+tick_mine = get_price()
+tick_from_pd = pl.DataFrame(price_df.reset_index().astype(
+   {'Date': 'datetime64[ns, UTC]'})
+ .loc[:, tick_mine.columns])
+pt.assert_frame_equal(tick_mine, tick_from_pd)
+```
+
+## Creating a get_port Function
+
+```{python}
+port_tickers = ['QCOM','TSLA','NFLX','DIS','PG', 'MMM','IBM','BRK-B',
+                'UPS','F']
+df_data= { 
+'Beta':[1.34,2,0.75,1.2,0.41,0.95,1.23,0.9,1.05,1.15],
+'Shares':[-1900,-100,-400,-800,-5500,1600,1800,2800,1100,20800],
+'rSL':[42.75,231,156,54.2,37.5,42.75,29.97,59.97,39.97,2.10]
+}
+port = pd.DataFrame(df_data,index=port_tickers)
+port['Side'] = np.sign(port['Shares'])
+port['rCost'] = round(price_df.iloc[0,:].div(bm_cost) *1000,2)
+port['rPrice'] = round(price_df.iloc[-1,:].div(bm_price) *1000,2)
+port['Cost'] = price_df.iloc[0,:]
+port['Price'] = price_df.iloc[-1,:]
+```
+
+```{python}
+def get_port(price_df):
+    df_data= { 
+        'Beta':[1.34,2,0.75,1.2,0.41,0.95,1.23,0.9,1.05,1.15],
+        'Shares':[-1900,-100,-400,-800,-5500,1600,1800,2800,1100,20800],
+        'rSL':[42.75,231,156,54.2,37.5,42.75,29.97,59.97,39.97,2.10]
+    }   
+    port_tickers = ['QCOM','TSLA','NFLX','DIS','PG', 'MMM','IBM','BRK-B',
+                   'UPS','F']
+    cost = (price_df
+        .select(port_tickers)
+        .head(1)
+        .transpose()
+        .rename({'column_0': 'Cost'})
+    )
+    price = (price_df
+        .select(port_tickers)
+        .tail(1)
+        .transpose()
+        .rename({'column_0': 'Price'})
+    )
+    return (pl.DataFrame(df_data)
+        .with_columns(
+            tickers=pl.lit(pl.Series(port_tickers)),
+            Side=pl.when(pl.col('Shares') > 0).then(1).otherwise(-1)
+                    .cast(pl.Int64)
+        )
+        .hstack(cost)
+        .hstack(price)
+        .with_columns(rCost=(pl.col('Cost') / bm_cost * 1000).round(2),
+                      rPrice=(pl.col('Price') / bm_price * 1000).round(2)
+        )
+        .select(['tickers', 'Beta', 'Shares', 'rSL', 'Side', 'rCost', 
+                 'rPrice', 'Cost', 'Price'])
+    )
+
+port_pl = get_port(get_price())
+print(port_pl)
+
+```
+
+```{python}
+pt.assert_frame_equal(port_pl, 
+    pl.DataFrame(port.reset_index()).rename({'index': 'tickers'}))
+```
+
+## More Refactoring
+
+```{python}
+price_df['bm returns'] = round(np.exp(np.log(price_df[bm_ticker]/
+                        price_df[bm_ticker].shift()).cumsum()) - 1, 3)
+rel_price = round(price_df.div(price_df['^GSPC'],axis=0 )*1000,2)
+
+rMV = rel_price.mul(port['Shares'])
+rLong_MV = rMV[rMV >0].sum(axis=1)
+rShort_MV = rMV[rMV <0].sum(axis=1)
+rMV_Beta = rMV.mul(port['Beta'])
+rLong_MV_Beta = rMV_Beta[rMV_Beta >0].sum(axis=1) / rLong_MV
+rShort_MV_Beta = rMV_Beta[rMV_Beta <0].sum(axis=1)/ rShort_MV
+
+price_df['rNet_Beta'] = rLong_MV_Beta - rShort_MV_Beta
+price_df['rNet'] = round((rLong_MV + rShort_MV)
+                         .div(abs(rMV).sum(axis=1)),3)
+
+price_df['rReturns_Long'] = round(
+    np.exp(np.log(rLong_MV/rLong_MV.shift()).cumsum())-1,3)
+price_df['rReturns_Short'] = - round(
+    np.exp(np.log(rShort_MV/rShort_MV.shift()).cumsum())-1,3)
+price_df['rReturns'] = price_df['rReturns_Long'] + \
+    price_df['rReturns_Short']
+
+MV = price_df.mul(port['Shares'])
+Long_MV = MV[MV >0].sum(axis=1)
+Short_MV = MV[MV <0].sum(axis=1)
+price_df['Gross'] = round((Long_MV - Short_MV).div(K),3)
+price_df['Net'] = round((Long_MV + Short_MV).div(abs(MV).sum(axis=1)),3)
+
+price_df['Returns_Long'] = round(
+    np.exp(np.log(Long_MV/Long_MV.shift()).cumsum())-1,3)
+price_df['Returns_Short'] = -round(
+    np.exp(np.log(Short_MV/Short_MV.shift()).cumsum())-1,3)
+price_df['Returns'] = price_df['Returns_Long'] + price_df['Returns_Short']
+
+MV_Beta = MV.mul(port['Beta'])
+Long_MV_Beta = MV_Beta[MV_Beta >0].sum(axis=1) / Long_MV
+Short_MV_Beta = MV_Beta[MV_Beta <0].sum(axis=1)/ Short_MV
+price_df['Net_Beta'] = Long_MV_Beta - Short_MV_Beta
+```
+
+```{python}
+#round(np.exp(np.log(price_df[bm_ticker]/
+#    price_df[bm_ticker].shift()).cumsum()) - 1, 3)
+def update_price_df(price_df, bm_ticker):
+    return (price_df
+     .with_columns(bm_shift=pl.col(bm_ticker).shift(),
+      **{'bm returns': (pl.col(bm_ticker)/
+        (pl.col(bm_ticker).shift())).log().cum_sum().exp().sub(1)})
+    )
+
+pt.assert_frame_equal(update_price_df(get_price(), bm_ticker)
+ .select(['bm returns']),
+ pl.DataFrame(price_df[['bm returns']])
+)
+# Traceback (most recent call last)
+#   ...
+# AssertionError: DataFrames are different (value mismatch for column 'bm
+#      returns')
+# [left]:  [None, 0.005868056373107056, 0.001794688663375732,
+#      -0.010247515298020149, 0.007034865620724418, 0.004476257001509776,
+#      0.00045782874...
+# [right]: [None, 0.006, 0.002, -0.01, 0.007, 0.004, 0.0, 0.008, -0.004,
+#      0.019, 0.018, 0.025, 0.039, 0.042, 0.046, 0.044, 0.028, 0.02, 0.039, ...
+```
+
+```{python}
+# function and address rounding
+def returns(col_name, result_name=None):
+    if result_name is None:
+        result_name = f'{col_name} returns'
+    return ((pl.col(col_name)
+             / pl.col(col_name).shift())
+            .log()
+            .cum_sum()
+            .exp()
+            .sub(1)
+            .round(3)
+            .alias(result_name)
+    )
+
+def update_price_df(price_df, bm_ticker):
+    return (price_df
+            .with_columns(returns(bm_ticker, 'bm returns'))
+    )
+```
+
+```{python}
+pt.assert_frame_equal(
+  (update_price_df(get_price(), bm_ticker).select(['bm returns'])),
+  pl.DataFrame(price_df[['bm returns']]))
+```
+
+```{python}
+#rel_price = round(price_df.div(price_df['^GSPC'],axis=0 )*1000,2)
+rel_price_pl = (get_price()
+ .with_columns((pl.col(ticker_list) / (pl.col(bm_ticker)) * 1000).round(2))
+)
+```
+
+```{python}
+# rMV = rel_price.mul(port['Shares'])
+rMV_pl = (rel_price_pl
+ .with_columns([pl.col(name)*shares for i, (name, shares) in 
+                enumerate(port_pl.select(['tickers', 'Shares']).iter_rows())])
+)
+```
+
+```{python}
+#rLong_MV = rMV[rMV >0].sum(axis=1)
+rLong_MV_pl = (rMV_pl
+.select(pl.when(pl.col(pl.Float64).gt(0))
+        .then(pl.col(pl.Float64)).otherwise(0))
+.select(pl.sum_horizontal(pl.all()))
+)
+```
+
+```{python}
+#rLong_MV = rMV[rMV >0].sum(axis=1)
+#rMV_Beta = rMV.mul(port['Beta'])
+#rLong_MV_Beta = rMV_Beta[rMV_Beta >0].sum(axis=1) / rLong_MV
+rLong_MV_pl = (rMV_pl
+#.select(p.when(pl.col(pl.Float64).gt(0))
+#              .then(pl.col(pl.Float64)).otherwise(0))
+.select(pl.col(pl.Float64).clip(lower_bound=0))
+.select(pl.sum_horizontal(pl.all()).alias('rLong_MV'))
+)
+
+rMV_Beta_pl = (rMV_pl
+ .with_columns([pl.col(name)*shares for i, (name, shares) in 
+                enumerate(port_pl.select(['tickers', 'Beta']).iter_rows())])
+)
+rLong_MV_Beta_pl = (rMV_Beta_pl
+ .with_columns(pl.col(pl.Float64).clip(lower_bound=0))
+ .select('Date', 
+        rLong_MV_Beta=(pl.sum_horizontal(pl.col(pl.Float64)) / 
+                       rLong_MV_pl['rLong_MV'])
+       )
+)
+```
+
+```{python}
+#rShort_MV = rMV[rMV <0].sum(axis=1)
+#rShort_MV_Beta = rMV_Beta[rMV_Beta <0].sum(axis=1)/ rShort_MV
+rShort_MV_pl = (rMV_pl
+                .select(pl.col(pl.Float64).clip(upper_bound=0))
+.select(pl.sum_horizontal(pl.all()).alias('rShort_MV'))
+)
+
+rShort_MV_Beta_pl = (rMV_Beta_pl
+.with_columns(pl.col(pl.Float64).clip(upper_bound=0))
+.select('Date', 
+        rShort_MV_Beta=(pl.sum_horizontal(pl.col(pl.Float64)) / 
+                        rShort_MV_pl['rShort_MV']))
+ )
+```
+
+```{python}
+# need .to_series() 
+print((update_price_df(get_price(), bm_ticker))
+.with_columns(rNet_Beta=(rLong_MV_Beta_pl.select('rLong_MV_Beta') 
+          - rShort_MV_Beta_pl.select('rShort_MV_Beta')).to_series())
+)
+
+```
+
+```{python}
+## added atol=1e-4 to get rid of rounding error
+pt.assert_frame_equal((update_price_df(get_price(), bm_ticker)
+    .with_columns(rNet_Beta=(rLong_MV_Beta_pl.select('rLong_MV_Beta') 
+            - rShort_MV_Beta_pl.select('rShort_MV_Beta')).to_series())
+     .select(['rNet_Beta'])),
+    pl.DataFrame(price_df[['rNet_Beta']]), atol=1e-4)
+```
+
+```{python}
+# price_df['rReturns_Long'] = round(
+#     np.exp(np.log(rLong_MV/rLong_MV.shift()).cumsum())-1,3)
+# price_df['rReturns_Short'] = - round(
+#     np.exp(np.log(rShort_MV/rShort_MV.shift()).cumsum())-1,3)
+# price_df['rReturns'] = price_df['rReturns_Long']  \
+#          + price_df['rReturns_Short']
+
+(update_price_df(get_price(), bm_ticker)
+ .with_columns(rNet_Beta=(rLong_MV_Beta_pl.select('rLong_MV_Beta') 
+                - rShort_MV_Beta_pl.select('rShort_MV_Beta')).to_series(),
+    rLong_MV=rLong_MV_pl['rLong_MV'], 
+    rShort_MV=rShort_MV_pl['rShort_MV']
+              )
+ .with_columns(rReturns_Long=returns('rLong_MV'),
+               rReturns_Short=-returns('rShort_MV'),
+                )
+ .with_columns(rReturns=pl.col('rReturns_Long') + pl.col('rReturns_Short'))
+)
+```
+
+```{python}
+pt.assert_frame_equal(update_price_df(get_price(), bm_ticker)
+ .with_columns(rNet_Beta=(rLong_MV_Beta_pl.select('rLong_MV_Beta') 
+         - rShort_MV_Beta_pl.select('rShort_MV_Beta')).to_series(),
+    rLong_MV=rLong_MV_pl['rLong_MV'], 
+    rShort_MV=rShort_MV_pl['rShort_MV']
+              )
+ .with_columns(rReturns_Long=returns('rLong_MV'),
+               rReturns_Short=-returns('rShort_MV'),
+                )
+ .with_columns(rReturns=pl.col('rReturns_Long') + pl.col('rReturns_Short'))
+ .select(['rReturns']), 
+pl.DataFrame(price_df[['rReturns']]), atol=1e-3)
+```
+
+```{python}
+# MV = price_df.mul(port['Shares'])
+# Long_MV = MV[MV >0].sum(axis=1)
+# Short_MV = MV[MV <0].sum(axis=1)
+# price_df['Gross'] = round((Long_MV - Short_MV).div(K),3)
+# price_df['Net'] = round(
+#    (Long_MV + Short_MV).div(abs(MV).sum(axis=1)),3)
+
+MV_pl = (price_pl
+    .with_columns([pl.col(ticker)*port_pl.select('Shares').row(i)[0] 
+                   for i, ticker in enumerate(port_pl['tickers'])])
+    .with_columns(pl.lit(0).alias(bm_ticker))   # clear ^GSPC column
+)
+Long_MV_pl = (MV_pl
+.select(pl.col(pl.Float64).clip(lower_bound=0))
+.select(Long_MV=pl.sum_horizontal(pl.all()))
+)
+Short_MV_pl = (MV_pl
+.select(pl.col(pl.Float64).clip(upper_bound=0))
+.select(Short_MV=pl.sum_horizontal(pl.all()))
+)
+
+net_denom = (MV_pl
+.select(pl.col(pl.Float64))
+.select(pl.sum_horizontal(pl.all().abs()))
+)
+
+(update_price_df(get_price(), bm_ticker)
+.with_columns(rNet_Beta=(rLong_MV_Beta_pl.select('rLong_MV_Beta') 
+            - rShort_MV_Beta_pl.select('rShort_MV_Beta')).to_series(),
+    rLong_MV=rLong_MV_pl['rLong_MV'], 
+    rShort_MV=rShort_MV_pl['rShort_MV'],
+    Long_MV=Long_MV_pl['Long_MV'],
+    Short_MV=Short_MV_pl['Short_MV'])
+ .with_columns(rReturns_Long=returns('rLong_MV'),
+               rReturns_Short=-returns('rShort_MV'),
+                )
+ .with_columns(rReturns=pl.col('rReturns_Long') + pl.col('rReturns_Short'),
+               Gross=((pl.col('Long_MV') - pl.col('Short_MV')) / K),
+               Net=((pl.col('Long_MV') + pl.col('Short_MV')) / 
+               net_denom.to_series())
+ )
+)
+```
+
+```{python}
+pt.assert_frame_equal((update_price_df(get_price(), bm_ticker)
+.with_columns(rNet_Beta=(rLong_MV_Beta_pl.select('rLong_MV_Beta') 
+                  - rShort_MV_Beta_pl.select('rShort_MV_Beta')).to_series(),
+    rLong_MV=rLong_MV_pl['rLong_MV'], 
+    rShort_MV=rShort_MV_pl['rShort_MV'],
+    Long_MV=Long_MV_pl['Long_MV'],
+    Short_MV=Short_MV_pl['Short_MV'])
+ .with_columns(rReturns_Long=returns('rLong_MV'),
+               rReturns_Short=-returns('rShort_MV'),
+                )
+ .with_columns(rReturns=pl.col('rReturns_Long') + pl.col('rReturns_Short'),
+               Gross=((pl.col('Long_MV') - pl.col('Short_MV')) / K),
+                Net=((pl.col('Long_MV') + pl.col('Short_MV')) / 
+                 net_denom.to_series())
+ )
+ .select(['Gross', 'Net'])),
+    pl.DataFrame(price_df[['Gross', 'Net']]), atol=1e-3)
+```
+
+```{python}
+# price_df['Returns_Long'] = round(
+#     np.exp(np.log(Long_MV/Long_MV.shift()).cumsum())-1,3)
+# price_df['Returns_Short'] = - round(
+#     np.exp(np.log(Short_MV/Short_MV.shift()).cumsum())-1,3)
+# price_df['Returns'] = price_df['Returns_Long'] + price_df['Returns_Short']
+
+
+(update_price_df(get_price(), bm_ticker)
+.with_columns(rNet_Beta=(rLong_MV_Beta_pl.select('rLong_MV_Beta') 
+               - rShort_MV_Beta_pl.select('rShort_MV_Beta')).to_series(),
+    rLong_MV=rLong_MV_pl['rLong_MV'], 
+    rShort_MV=rShort_MV_pl['rShort_MV'],
+    Long_MV=Long_MV_pl['Long_MV'],
+    Short_MV=Short_MV_pl['Short_MV'])
+ .with_columns(rReturns_Long=returns('rLong_MV'),
+               rReturns_Short=-returns('rShort_MV'),
+               Returns_Long=returns('Long_MV'),
+               Returns_Short=-returns('Short_MV'),
+                )
+ .with_columns(rReturns=pl.col('rReturns_Long') + pl.col('rReturns_Short'),
+               Gross=((pl.col('Long_MV') - pl.col('Short_MV')) / K),
+               Net=((pl.col('Long_MV') + pl.col('Short_MV')) / 
+                 net_denom.to_series()),
+               Returns=((pl.col('Returns_Long') + pl.col('Returns_Short')))              
+ )
+ .select(['Returns', 'Returns_Long', 'Returns_Short'])
+)
+```
+
+```{python}
+pt.assert_frame_equal((update_price_df(get_price(), bm_ticker)
+.with_columns(rNet_Beta=(rLong_MV_Beta_pl.select('rLong_MV_Beta') 
+               - rShort_MV_Beta_pl.select('rShort_MV_Beta')).to_series(),
+    rLong_MV=rLong_MV_pl['rLong_MV'], 
+    rShort_MV=rShort_MV_pl['rShort_MV'],
+    Long_MV=Long_MV_pl['Long_MV'],
+    Short_MV=Short_MV_pl['Short_MV'])
+ .with_columns(rReturns_Long=returns('rLong_MV'),
+               rReturns_Short=-returns('rShort_MV'),
+               Returns_Long=returns('Long_MV'),
+               Returns_Short=-returns('Short_MV'),
+                )
+ .with_columns(rReturns=pl.col('rReturns_Long') + pl.col('rReturns_Short'),
+               Gross=((pl.col('Long_MV') - pl.col('Short_MV')) / K),
+                Net=((pl.col('Long_MV') + pl.col('Short_MV')) / 
+                 net_denom.to_series()),
+                Returns=((pl.col('Returns_Long') + pl.col('Returns_Short')))              
+ )
+ .select(['Returns'])
+),
+pl.DataFrame(price_df[['Returns']]), atol=1e-3)
+```
+
+```{python}
+# MV_Beta = MV.mul(port['Beta'])
+# Long_MV_Beta = MV_Beta[MV_Beta >0].sum(axis=1) / Long_MV
+# Short_MV_Beta = MV_Beta[MV_Beta <0].sum(axis=1)/ Short_MV
+# price_df['Net_Beta'] = Long_MV_Beta - Short_MV_Beta
+
+MV_Beta_pl = (MV_pl
+    .with_columns([pl.col(ticker)*port_pl.select('Beta').row(i)[0] 
+                   for i, ticker in enumerate(port_pl['tickers'])])
+)
+Long_MV_Beta_pl = (MV_Beta_pl
+                   # use clip
+ .select(pl.col(pl.Float64).clip(lower_bound=0))
+ .select(Long_MV_Beta=pl.sum_horizontal(pl.all()) / 
+         Long_MV_pl['Long_MV'])
+)
+
+Short_MV_Beta_pl = (MV_Beta_pl
+ .select(pl.col(pl.Float64).clip(upper_bound=0))
+ .select(Short_MV_Beta=pl.sum_horizontal(pl.all()) / 
+         Short_MV_pl['Short_MV'] )
+)
+
+(update_price_df(get_price(), bm_ticker)
+.with_columns(rNet_Beta=(rLong_MV_Beta_pl.select('rLong_MV_Beta') 
+            - rShort_MV_Beta_pl.select('rShort_MV_Beta')).to_series(),
+    rLong_MV=rLong_MV_pl['rLong_MV'], 
+    rShort_MV=rShort_MV_pl['rShort_MV'],
+    Long_MV=Long_MV_pl['Long_MV'],
+    Short_MV=Short_MV_pl['Short_MV'])
+ .with_columns(rReturns_Long=returns('rLong_MV'),
+               rReturns_Short=-returns('rShort_MV'),
+               Returns_Long=returns('Long_MV'),
+               Returns_Short=-returns('Short_MV'),
+                )
+ .with_columns(rReturns=pl.col('rReturns_Long') + pl.col('rReturns_Short'),
+    Gross=((pl.col('Long_MV') - pl.col('Short_MV')) / K),
+    Net=((pl.col('Long_MV') + pl.col('Short_MV')) / 
+        net_denom.to_series()),
+    Returns=((pl.col('Returns_Long') + pl.col('Returns_Short'))),
+    Net_Beta=(Long_MV_Beta_pl['Long_MV_Beta'] - 
+              Short_MV_Beta_pl['Short_MV_Beta'])           
+ )
+)
+```
+
+## Final Refactoring
+
+```{python}
+import polars as pl
+import polars.selectors as cs
+
+def returns(col_name, result_name=None):
+    if result_name is None:
+        result_name = f'{col_name} returns'
+    return ((pl.col(col_name)
+             / pl.col(col_name).shift())
+            .log()
+            .cum_sum()
+            .exp()
+            .sub(1)
+            .round(3)
+            .alias(result_name)
+    )
+
+def calc_long(df_, divisor=1, alias='long'):
+    return (df_
+            .select(pl.col(pl.Float64).clip(lower_bound=0))
+            .select((pl.sum_horizontal(pl.all()) / divisor).alias(alias))
+              )
+
+def calc_short(df_, divisor=1, alias='short'):
+    return (df_
+            .select(pl.col(pl.Float64).clip(upper_bound=0))
+            .select((pl.sum_horizontal(pl.all()) / divisor).alias(alias))
+              )
+
+def multiply_tickers_rows_by_column(df_, col_name, port_pl):
+    return (df_
+            .with_columns([pl.col(ticker)*port_pl.select(col_name).row(i)[0] 
+                           for i, ticker in enumerate(port_pl['tickers'])])
+           )
+
+
+def get_price():
+   # read first two rows to get headers
+   head_df = pl.read_csv('data/raw-yfinance.csv', n_rows=2)
+   # get tickers from first row
+   cols = ['_'.join([a, str(b)]) for a, b in 
+           zip(head_df.columns, head_df.row(0))]
+   return (pl.read_csv('data/raw-yfinance.csv', has_header=False, 
+                       skip_rows=3, new_columns=cols, try_parse_dates=True)
+     # convert first column to datetime
+     #.with_columns(pl.col('_None').str.to_datetime('%Y-%m-%d %H:%M:%S%z'))
+    .rename({'_None': 'Date'})
+     # columns starting with Close
+    .select(cs.matches(r'^(Date|Close.*)'))
+    # rename columns, take value after last _
+    .pipe(lambda df_: df_.rename(dict(zip(df_.columns, 
+                            [c.split('_')[-1] for c in df_.columns]))))
+    .with_columns(
+        pl.col('Date').cast(pl.Datetime(time_unit='ns', time_zone='UTC')),
+        pl.col('NFLX').cast(pl.Float64))
+    .with_columns(cs.float().round(2))
+)
+
+def get_port(price_df, bm_ticker):
+    df_data= { 
+        'Beta':[1.34,2,0.75,1.2,0.41,0.95,1.23,0.9,1.05,1.15],
+        'Shares':[-1900,-100,-400,-800,-5500,1600,1800,2800,1100,20800],
+        'rSL':[42.75,231,156,54.2,37.5,42.75,29.97,59.97,39.97,2.10]
+    }   
+    port_tickers = ['QCOM','TSLA','NFLX','DIS','PG', 'MMM','IBM','BRK-B',
+                  'UPS','F']
+    cost = (price_df
+        .select(port_tickers)
+        .head(1)
+        .transpose()
+        .rename({'column_0': 'Cost'})
+    )
+    price = (price_df
+        .select(port_tickers)
+        .tail(1)
+        .transpose()
+        .rename({'column_0': 'Price'})
+    )
+    bm_cost = price_df[bm_ticker][0]
+    bm_price = price_df[bm_ticker][-1]
+    return (pl.DataFrame(df_data)
+        .with_columns(
+            tickers=pl.lit(pl.Series(port_tickers)),
+            Side=pl.when(pl.col('Shares') > 0).then(1).otherwise(-1)
+                    .cast(pl.Int64)
+        )
+        .hstack(cost)
+        .hstack(price)
+        .with_columns(rCost=(pl.col('Cost') / bm_cost * 1000).round(2),
+                      rPrice=(pl.col('Price') / bm_price * 1000).round(2)
+        )
+        .select(['tickers', 'Beta', 'Shares', 'rSL', 'Side', 'rCost', 
+                 'rPrice', 'Cost', 'Price'])
+    )
+
+def get_price_and_port():
+    K = 1000000
+    lot = 100
+    port_tickers = ['QCOM','TSLA','NFLX','DIS','PG', 'MMM','IBM','BRK-B',
+                    'UPS','F']
+    bm_ticker = '^GSPC'
+    ticker_list = [bm_ticker] + port_tickers
+    price_pl = get_price()
+    port_pl = get_port(price_pl, bm_ticker)
+
+    # inline rel_price
+    rMV_pl = (price_pl
+            .with_columns((pl.col(ticker_list) / 
+                           (pl.col(bm_ticker)) * 1000).round(2))
+            .pipe(multiply_tickers_rows_by_column, 'Shares', port_pl)
+    )
+    rMV_Beta_pl = (rMV_pl
+                .pipe(multiply_tickers_rows_by_column, 'Beta', port_pl)
+    )
+    rShort_MV_pl = rMV_pl.pipe(calc_short)
+    rShort_MV_Beta_pl = rMV_Beta_pl.pipe(calc_short, 
+                                         divisor=rShort_MV_pl['short'])
+
+    rLong_MV_pl = rMV_pl.pipe(calc_long)
+    rLong_MV_Beta_pl = rMV_Beta_pl.pipe(calc_long, divisor=rLong_MV_pl['long'])
+
+    MV_pl = (price_pl
+        .pipe(multiply_tickers_rows_by_column, 'Shares', port_pl)
+        .with_columns(pl.lit(0).alias(bm_ticker))   # clear ^GSPC column
+    )
+    Long_MV_pl = MV_pl.pipe(calc_long)
+    Short_MV_pl = MV_pl.pipe(calc_short)
+
+    net_denom = (MV_pl
+        .select(pl.col(pl.Float64))
+        .select(pl.sum_horizontal(pl.all().abs()))
+    )
+
+    MV_Beta_pl = (MV_pl
+        .pipe(multiply_tickers_rows_by_column, 'Beta', port_pl)
+    )
+    Long_MV_Beta_pl = MV_Beta_pl.pipe(calc_long, 
+                                      divisor=Long_MV_pl['long'])
+    Short_MV_Beta_pl = MV_Beta_pl.pipe(calc_short,
+                                       divisor=Short_MV_pl['short'])
+
+    final_price = (price_pl
+        .with_columns(returns(bm_ticker))
+        .with_columns(
+            rNet_Beta=(rLong_MV_Beta_pl.select('long') 
+                    - rShort_MV_Beta_pl.select('short')).to_series(),
+            rLong_MV=rLong_MV_pl['long'], 
+            rShort_MV=rShort_MV_pl['short'],
+            Long_MV=Long_MV_pl['long'],
+            Short_MV=Short_MV_pl['short']
+            )
+        .with_columns(
+            rReturns_Long=returns('rLong_MV'),
+            rReturns_Short=-returns('rShort_MV'),
+            Returns_Long=returns('Long_MV'),
+            Returns_Short=-returns('Short_MV'),
+            )
+        .with_columns(
+            rReturns=pl.col('rReturns_Long') + pl.col('rReturns_Short'),
+            Gross=((pl.col('Long_MV') - pl.col('Short_MV')) / K),
+            Net=((pl.col('Long_MV') + pl.col('Short_MV')) / 
+                net_denom.to_series()),
+            Returns=((pl.col('Returns_Long') + pl.col('Returns_Short'))),
+            Net_Beta=(Long_MV_Beta_pl['long'] - Short_MV_Beta_pl['short'])           
+            )
+    )
+    return final_price, port_pl
+```
+
+```{python}
+import polars.testing as pt
+price_pl, port_pl = get_price_and_port()
+pt.assert_frame_equal(
+    price_pl.select(['Gross', 'Net', 'Returns', 'Net_Beta']),
+    pl.DataFrame(price_df[['Gross', 'Net', 'Returns', 'Net_Beta']]), 
+    atol=1e-3)
+```
+
+## To Port or Not to Port
+
+```{python}
+%%timeit
+price_df = round( raw_data['Close'],2)
+
+bm_cost = price_df[bm_ticker].iloc[0]
+bm_price = price_df[bm_ticker].iloc[-1]
+
+port['rCost'] = round(price_df.iloc[0,:].div(bm_cost) *1000,2)
+port['rPrice'] = round(price_df.iloc[-1,:].div(bm_price) *1000,2)
+port['Cost'] = price_df.iloc[0,:]
+port['Price'] = price_df.iloc[-1,:]
+
+# Chapter 13: Portfolio Management System
+
+price_df['bm returns'] = round(
+    np.exp(np.log(price_df[bm_ticker]/
+    price_df[bm_ticker].shift()).cumsum()) - 1, 3)
+rel_price = round(price_df.div(price_df['^GSPC'],axis=0 )*1000,2)
+
+rMV = rel_price.mul(port['Shares'])
+rLong_MV = rMV[rMV >0].sum(axis=1)
+rShort_MV = rMV[rMV <0].sum(axis=1)
+rMV_Beta = rMV.mul(port['Beta'])
+rLong_MV_Beta = rMV_Beta[rMV_Beta >0].sum(axis=1) / rLong_MV
+rShort_MV_Beta = rMV_Beta[rMV_Beta <0].sum(axis=1)/ rShort_MV
+
+price_df['rNet_Beta'] = rLong_MV_Beta - rShort_MV_Beta
+price_df['rNet'] = round(
+    (rLong_MV + rShort_MV).div(abs(rMV).sum(axis=1)),3)
+
+price_df['rReturns_Long'] = round(
+    np.exp(np.log(rLong_MV/rLong_MV.shift()).cumsum())-1,3)
+price_df['rReturns_Short'] = - round(
+    np.exp(np.log(rShort_MV/rShort_MV.shift()).cumsum())-1,3)
+price_df['rReturns'] = price_df['rReturns_Long'] + \
+    price_df['rReturns_Short']
+
+MV = price_df.mul(port['Shares'])
+Long_MV = MV[MV >0].sum(axis=1)
+Short_MV = MV[MV <0].sum(axis=1)
+price_df['Gross'] = round((Long_MV - Short_MV).div(K),3)
+price_df['Net'] = round(
+    (Long_MV + Short_MV).div(abs(MV).sum(axis=1)),3)
+
+price_df['Returns_Long'] = round(
+    np.exp(np.log(Long_MV/Long_MV.shift()).cumsum())-1,3)
+price_df['Returns_Short'] = - round(
+    np.exp(np.log(Short_MV/Short_MV.shift()).cumsum())-1,3)
+price_df['Returns'] = price_df['Returns_Long'] + \
+      price_df['Returns_Short']
+
+MV_Beta = MV.mul(port['Beta'])
+Long_MV_Beta = MV_Beta[MV_Beta >0].sum(axis=1) / Long_MV
+Short_MV_Beta = MV_Beta[MV_Beta <0].sum(axis=1)/ Short_MV
+price_df['Net_Beta'] = Long_MV_Beta - Short_MV_Beta
+price_df
+
+```
+
+```{python}
+%%timeit
+
+# inline rel_price
+rMV_pl = (price_pl
+    .with_columns((pl.col(ticker_list) / 
+            (pl.col(bm_ticker)) * 1000).round(2))
+    .pipe(multiply_tickers_rows_by_column, 'Shares', port_pl)
+)
+rMV_Beta_pl = (rMV_pl
+            .pipe(multiply_tickers_rows_by_column, 'Beta', port_pl)
+)
+rShort_MV_pl = (rMV_pl.pipe(calc_short))
+rShort_MV_Beta_pl = (rMV_Beta_pl.pipe(calc_short,
+                     divisor=rShort_MV_pl['short']))
+
+rLong_MV_pl = (rMV_pl.pipe(calc_long))
+rLong_MV_Beta_pl = (rMV_Beta_pl.pipe(calc_long,
+                    divisor=rLong_MV_pl['long']))
+
+MV_pl = (price_pl
+    .pipe(multiply_tickers_rows_by_column, 'Shares', port_pl)
+    .with_columns(pl.lit(0).alias(bm_ticker))   # clear ^GSPC column
+)
+Long_MV_pl = (MV_pl.pipe(calc_long))
+Short_MV_pl = (MV_pl.pipe(calc_short))
+
+net_denom = (MV_pl
+.select(pl.col(pl.Float64))
+.select(pl.sum_horizontal(pl.all().abs()))
+)
+
+MV_Beta_pl = (MV_pl
+    .pipe(multiply_tickers_rows_by_column, 'Beta', port_pl)
+)
+Long_MV_Beta_pl = (MV_Beta_pl.pipe(calc_long, divisor=Long_MV_pl['long']))
+Short_MV_Beta_pl = (MV_Beta_pl.pipe(calc_short,
+                    divisor=Short_MV_pl['short']))
+ 
+final_price = (price_pl
+.with_columns(returns(bm_ticker))
+.with_columns(rNet_Beta=(rLong_MV_Beta_pl.select('long') - 
+              rShort_MV_Beta_pl.select('short')).to_series(),
+    rLong_MV=rLong_MV_pl['long'], 
+    rShort_MV=rShort_MV_pl['short'],
+    Long_MV=Long_MV_pl['long'],
+    Short_MV=Short_MV_pl['short']
+    )
+.with_columns(rReturns_Long=returns('rLong_MV'),
+            rReturns_Short=-returns('rShort_MV'),
+            Returns_Long=returns('Long_MV'),
+            Returns_Short=-returns('Short_MV'),
+    )
+.with_columns(rReturns=pl.col('rReturns_Long') + pl.col('rReturns_Short'),
+            Gross=((pl.col('Long_MV') - pl.col('Short_MV')) / K),
+            Net=((pl.col('Long_MV') + pl.col('Short_MV')) / 
+                net_denom.to_series()),
+            Returns=((pl.col('Returns_Long') + pl.col('Returns_Short'))),
+            Net_Beta=(Long_MV_Beta_pl['long'] - Short_MV_Beta_pl['short'])           
+    )
+)
+
+```
+
+## Chapter Methods
+
+## Summary
+
+## Exercises
+
+# Extending Polars
+
+## Loans with Polars
+
+```{python}
+L = 600_000
+c = 0.055 / 12
+n = 360
+P = (L * 
+   (c * (1 + c) ** n) / \
+   ((1 + c) ** n - 1))
+P  # monthly payment 3_406.734
+
+```
+
+```{python}
+def payment_schedule_gen(principal, number_of_payments, 
+                         monthly_interest_rate, monthly_payment):
+    remaining_balance = principal
+    done = False
+    for month in range(number_of_payments):
+        if remaining_balance < monthly_payment:
+            interest_payment = remaining_balance * monthly_interest_rate
+            monthly_payment = remaining_balance + interest_payment
+            principal_payment = remaining_balance
+            remaining_balance = 0
+            done = True
+        else:
+            interest_payment = remaining_balance * monthly_interest_rate
+            principal_payment = monthly_payment - interest_payment
+            remaining_balance -= principal_payment
+        yield {'month': month,
+                'Principal': principal_payment,
+                'Interest': interest_payment,
+                'Remaining Balance': remaining_balance,
+                'Monthly Payment': monthly_payment}
+        if done:
+            break
+```
+
+```{python}
+print(pl.DataFrame(payment_schedule_gen(L, n, c, P)))
+
+```
+
+```{python}
+%%timeit
+pl.DataFrame(payment_schedule_gen(L, n, c, P))
+
+```
+
+## Use Numba
+
+```{python}
+from numba import njit
+import numpy as np
+
+@njit
+def payment_schedule_numba(principal, number_of_payments, 
+                           monthly_interest_rate, monthly_payment):
+    remaining_balance = principal
+    done = False
+    results = np.zeros((number_of_payments, 5), dtype=np.float64)
+    for month in range(number_of_payments):
+        if remaining_balance < monthly_payment:
+            interest_payment = remaining_balance * monthly_interest_rate
+            monthly_payment = remaining_balance + interest_payment
+            principal_payment = remaining_balance
+            remaining_balance = 0
+            done = True
+        else:
+            interest_payment = remaining_balance * monthly_interest_rate
+            principal_payment = monthly_payment - interest_payment
+            remaining_balance -= principal_payment
+        results[month, 0] = month
+        results[month, 1] = principal_payment
+        results[month, 2] = interest_payment
+        results[month, 3] = remaining_balance
+        results[month, 4] = monthly_payment
+        if done:
+            break
+    return results
+```
+
+```{python}
+print(pl.DataFrame(payment_schedule_numba(L, n, c, P))
+  .rename({'column_0': 'month', 'column_1': 'Principal', 
+           'column_2': 'Interest', 'column_3': 'Remaining Balance', 
+           'column_4': 'Monthly Payment'}))          
+
+```
+
+```{python}
+%%timeit
+(pl.DataFrame(payment_schedule_numba(L, n, c, P))
+  .rename({'column_0': 'month', 'column_1': 'Principal', 
+           'column_2': 'Interest', 'column_3': 'Remaining Balance', 
+           'column_4': 'Monthly Payment'}))
+
+```
+
+## Closed Form Solution
+
+```{python}
+sched = pl.DataFrame({'month': np.arange(360)})
+
+def remaining_balance_pl(principal, number_of_payments, 
+                         monthly_interest_rate, num_month):
+    return principal * ((
+          (1 + monthly_interest_rate)**number_of_payments - \
+          ( 1 + monthly_interest_rate)**num_month ) / 
+       ((1 + monthly_interest_rate)**number_of_payments - 1 ))
+```
+
+```{python}
+print(sched
+ .with_columns(
+     remaining_balance_pl(L, n, c, 
+          pl.col('month')).alias('Remaining Balance'),
+     pl.lit(P).alias('Monthly Payment'))
+ .with_columns(Interest=(pl.col('Remaining Balance') * c))
+ .with_columns(Principal=(pl.col('Monthly Payment') - pl.col('Interest')))
+)
+
+```
+
+```{python}
+%%timeit
+(sched
+ .with_columns(
+     remaining_balance_pl(L, n, c, 
+          pl.col('month')).alias('Remaining Balance'),
+     pl.lit(P).alias('Monthly Payment'))
+ .with_columns(Interest=(pl.col('Remaining Balance') * c))
+ .with_columns(Principal=
+       (pl.col('Monthly Payment') - pl.col('Interest')))
+)
+
+```
+
+## Adding a PCA API to Polars
+
+```{python}
+autos = tweak_auto(raw)
+```
+
+## Calculating the Principal Components
+
+```{python}
+import numpy as np
+import polars.selectors as cs
+X = (autos
+     .select(cs.numeric().fill_null(0))
+     .select((pl.all() - pl.all().mean()) / pl.all().std()) # 1
+)
+num_df = X
+centered = (num_df # 2
+            .select((pl.all() - pl.all().mean()))
+           )
+cov = np.cov(centered.transpose()) # 3
+vals, vecs = np.linalg.eig(cov) # 4
+
+exp_var = pl.DataFrame( # 5
+    {'PC': [f'PC{i+1}' for i in range(len(num_df.columns))],
+     'var':sorted(vals, reverse=True)})
+
+idxs = np.argsort(vals)[::-1]
+comps = (pl.DataFrame(vecs[:, idxs]) # 6
+         .rename(mapping={f'column_{i}': f'PC{i+1}' 
+                          for i in range(len(num_df.columns))})
+)
+
+pcas = (pl.DataFrame(np.dot(centered, comps)) # 7
+    .rename(mapping={f'column_{i}': f'PC{i+1}' 
+                     for i in range(len(num_df.columns))})
+)
+```
+
+```{python}
+print(pcas)
+
+```
+
+```{python}
+from sklearn.decomposition import PCA
+import sklearn
+sklearn.set_config(transform_output='polars')
+pca = PCA()
+print(pca.fit_transform(X))
+
+```
+
+## Scatter Plot of the Principal Components
+
+```{python}
+import plotly.express as px
+def plot_pca_3d(df, x='PC1', y='PC2', color_col=None, size_col=None, 
+                symbol_col=None, cmap='viridis', components=None, 
+                biplot=True, biplot_scale=20, biplot_limit=.2, 
+                alpha=1, width=600, height=600):
+        
+        if color_col is not None:
+            data = (df
+                    .with_columns(color_col)
+                   )
+        else:
+            data = df
+
+        fig = px.scatter_3d(data, x='PC1', y='PC2', z='PC3', color=color_col,
+                            color_continuous_scale=cmap,
+                            hover_data=df.columns[:10], 
+                            symbol=symbol_col,
+                            size=size_col,
+                            opacity=alpha,
+                            width=width, height=height,
+                       #log_y=True,
+                      )
+
+        if size_col is None:
+            fig.update_traces(marker_size=3)
+
+        if biplot:
+            scale = biplot_scale
+            annots = []
+            for column in components.columns:
+                loadings = {f'PC{i}':val*scale 
+                            for i, val in enumerate(components[column], 1)}
+                loadings['name'] = [column]
+                new_fig = px.line_3d(x=[0, loadings['PC1']], 
+                                     y=[0, loadings['PC2']],
+                                     z=[0, loadings['PC3']], width=20)
+                for trace in new_fig['data']:
+                    fig.append_trace(trace, row=1, col=1)
+
+                annots.append(
+                    dict(
+                        showarrow=False,
+                        x=loadings['PC1'],
+                        y=loadings['PC2'],
+                        z=loadings['PC3'],
+                        text=column,
+                        xanchor="left",
+                        xshift=1,
+                        opacity=0.7)
+                )
+            fig.update_layout(scene={'annotations':annots})
+        return fig
+```
+
+```{python}
+plot_pca_3d(pcas, color_col=autos['year'], biplot=False, width=800)
+```
+
+## Adding the API
+
+```{python}
+import polars as pl
+import numpy as np
+
+@pl.api.register_dataframe_namespace('pca')
+class PCA:
+    def __init__(self, df):
+        self.df = df
+
+    def fit(self):
+        centered = (self.df
+                    .select(pl.all() - pl.all().mean())
+                   )
+        cov = np.cov(centered.transpose())                     
+        vals, vecs = np.linalg.eig(cov)
+        self._explained_variance = pl.DataFrame(
+            {'PC': [f'PC{i+1}' for i in range(len(num_df.columns))],
+             'var':sorted(vals, reverse=True)}
+        )
+
+        idxs = np.argsort(vals)[::-1]
+        comps = (pl.DataFrame(vecs[:, idxs])
+            .rename(mapping={f'column_{i}': f'PC{i+1}' 
+                for i in range(len(num_df.columns))})
+        )
+
+        self.pcs = (pl.DataFrame(np.dot(centered, comps))
+            .rename(mapping={f'column_{i}': f'PC{i+1}' 
+                for i in range(len(num_df.columns))})
+        )    
+        self._components = comps
+        return self.df
+                
+    def transform(self):
+        return self.pcs
+
+    def explained_variance(self):
+        return self._explained_variance
+
+    def components(self):
+        return (self._components
+                .with_columns(Feature=pl.Series(self.df.columns))
+               )
+
+    def filter_components(self, limit_components, mag_threshold):
+        comps = self.components()
+        columns = comps.columns[:limit_components]
+        res =  (comps
+           .select(*columns, pl.col('Feature'))
+           .filter(pl.any_horizontal(cs.numeric().abs() > mag_threshold))        
+        )
+        return res
+    
+    def component_plot(self, limit_components=3, mag_threshold=.1):
+        comps = self.filter_components(limit_components, mag_threshold)
+        return  (comps
+                 .select(cs.numeric())
+                 .transpose()
+                 .rename(mapping={f'column_{i}': col
+                       for i, col in enumerate(comps['Feature'])})
+                 .select(pl.Series([f'PC{i+1}' 
+                          for i in range(limit_components)]).alias('PC'),
+                        *comps['Feature'])
+            .plot.bar(x='PC',
+                  rot=90)
+        )
+    
+    def scatter3d_plot(self, x='PC1', y='PC2', z='PC3', color_col=None, 
+                       size_col=None, symbol_col=None, cmap='viridis', 
+                       biplot=True, biplot_scale=20, biplot_limit=.2, 
+                       alpha=1, width=600, height=600):
+        return plot_pca_3d(self.pcs, x, y, color_col, size_col, 
+                symbol_col, cmap, self._components, biplot, biplot_scale, 
+                biplot_limit, alpha, width, height)
+```
+
+```{python}
+fit = (X
+ .pca.fit())
+```
+
+```{python}
+print(fit.pca.explained_variance()
+ .select(pl.all() / pl.all().sum()))
+
+```
+
+```{python}
+fit.pca.component_plot()
+```
+
+## Summary
+
+## Exercises
+
+# Conclusion
+
+## One Last Thing
+
