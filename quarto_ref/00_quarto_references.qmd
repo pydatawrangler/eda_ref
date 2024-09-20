@@ -1,0 +1,16 @@
+---
+title: "Quarto References"
+format: 
+    html:
+        self-contained: true
+---
+
+## Slidecraft with quarto by Emil Hvitfeldt
+https://emilhvitfeldt.com/talk/2023-11-27-slc-slidecraft/
+
+https://github.com/EmilHvitfeldt/talk-slc-slidecraft/tree/main
+
+
+## Presenting work using Quarto
+https://www.leahbrooks.org/leahweb/teaching/pppa_dataviz/2023/subpages/live_tutorials/tutorial_10.html
+
