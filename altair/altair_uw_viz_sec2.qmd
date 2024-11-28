@@ -1,0 +1,141 @@
+---
+jupyter: python3
+---
+
+```{python}
+import pandas as pd
+import polars as pl
+import altair as alt
+```
+
+```{python}
+from vega_datasets import data as vega_data
+```
+
+```{python}
+data = vega_data.gapminder()
+```
+
+```{python}
+data_pl = pl.from_pandas(data)
+```
+
+```{python}
+data.shape
+```
+
+```{python}
+data.head()
+```
+
+```{python}
+data2000 = data.query('year == 2000')
+data2000.head()
+```
+
+```{python}
+data2000.dtypes
+```
+
+```{python}
+alt.Chart(data2000).mark_point().encode(
+    alt.X('fertility:Q', scale=alt.Scale(zero=False)),
+    alt.Y('life_expect:Q', scale=alt.Scale(zero=False, nice=False))
+)
+```
+
+```{python}
+data_pl.plot.scatter(
+    alt.X('fertility:Q', scale=alt.Scale(zero=False)),
+    alt.Y('life_expect:Q', scale=alt.Scale(zero=False, nice=False)),
+    tooltip=['country:N']
+# ).mark_circle(
+#     size=200,strokeWidth=5
+)
+```
+
+```{python}
+alt.Chart(data2000).mark_point(filled=True).encode(
+    alt.X('fertility:Q'),
+    alt.Y('life_expect:Q'),
+    alt.Size('pop:Q', scale=alt.Scale(range=[0, 1000])),
+    alt.Color('cluster:N'),
+    alt.OpacityValue(0.5)
+)
+```
+
+```{python}
+# Section 2.3.5 - Shape
+alt.Chart(data2000).mark_point(filled=True).encode(
+    alt.X('fertility:Q'),
+    alt.Y('life_expect:Q'),
+    alt.Size('pop:Q', scale=alt.Scale(range=[0, 1000])),
+    alt.Color('cluster:N'),
+    alt.OpacityValue(0.5),
+    alt.Shape('cluster:N')
+)
+```
+
+```{python}
+alt.Chart(data2000).mark_point(filled=True).encode(
+    alt.X('fertility:Q'),
+    alt.Y('life_expect:Q'),
+    alt.Size('pop:Q', scale=alt.Scale(range=[0, 1000])),
+    alt.Color('cluster:N'),
+    alt.OpacityValue(0.5),
+    alt.Tooltip('country')
+)
+```
+
+```{python}
+alt.Chart(data2000).mark_point(filled=True).encode(
+    alt.X('fertility:Q'),
+    alt.Y('life_expect:Q'),
+    alt.Size('pop:Q', scale=alt.Scale(range=[0, 1000])),
+    alt.Color('cluster:N'),
+    alt.OpacityValue(0.5),
+    alt.Order('pop:Q', sort='descending'),
+    tooltip = [
+        alt.Tooltip('country:N'),
+        alt.Tooltip('fertility:Q'),
+        alt.Tooltip('life_expect:Q')
+    ]
+)
+```
+
+```{python}
+alt.Chart(data2000).mark_point(filled=True).encode(
+    alt.X('fertility:Q'),
+    alt.Y('life_expect:Q'),
+    alt.Size('pop:Q', scale=alt.Scale(range=[0,1000]),
+             legend=alt.Legend(orient='bottom', titleOrient='left')),
+    alt.Color('cluster:N', legend=None),
+    alt.OpacityValue(0.5),
+    alt.Tooltip('country:N'),
+    alt.Order('pop:Q', sort='descending'),
+    alt.Column('cluster:N')
+).properties(width=135, height=135)
+```
+
+```{python}
+select_year = alt.selection_point( # instead of selection_single)
+    name='select', fields=['year'], value=1955, # value instead of init
+    bind=alt.binding_range(min=1955, max=2005, step=5)
+)
+
+alt.Chart(data).mark_point(filled=True).encode(
+    alt.X('fertility:Q', scale=alt.Scale(domain=[0,9])),
+    alt.Y('life_expect:Q', scale=alt.Scale(domain=[0,90])),
+    alt.Size('pop:Q', scale=alt.Scale(domain=[0, 1200000000], range=[0,1000])),
+    alt.Color('cluster:N', legend=None),
+    alt.OpacityValue(0.5),
+    alt.Tooltip('country:N'),
+    alt.Order('pop:Q', sort='descending')
+).add_params(select_year).transform_filter(select_year) # instead of add_selection
+```
+
+```{python}
+# 2.4 Graphical Marks
+```
+
+

@@ -1,11 +1,24 @@
 ---
 title: Getting Started with Polars
 format:
-    html:
-        self-contained: true
-        number-sections: true
-        toc: true
+  html:
+    self-contained: true
+    number-sections: true
+    toc: true
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .qmd
+      format_name: quarto
+      format_version: '1.0'
+      jupytext_version: 1.15.1
+  kernelspec:
+    display_name: 'Python [conda env:eda]'
+    language: python
+    name: conda-env-eda-py
 ---
+
+# Getting Started with Polars
 
 ## Introduction 
 
@@ -17,6 +30,7 @@ https://github.com/mattharrison/datasets/tree/master/data
 
 
 ## Installing Polars
+
 ```{python}
 import polars as pl
 pl.__version__
@@ -42,7 +56,6 @@ print(sorted(lazy_ops & df_ops))
 col = pl.col('sample')
 col_ops = set(x for x in dir(col) if not x.startswith('_'))
 print(sorted(col_ops))
-
 ```
 
 ```{python}
@@ -53,7 +66,6 @@ print(sorted(col_ops))
  .sample(10)
  .mean()
 )
-
 ```
 
 ```{python}
@@ -81,7 +93,6 @@ df = pl.read_csv(path, null_values=['NA'])
 
 ```{python}
 print(df)
-
 ```
 
 ## Lazy CSV Reading
@@ -89,7 +100,6 @@ print(df)
 ```{python}
 lazy = pl.scan_csv(path, null_values=['NA'])
 print(lazy)
-
 ```
 
 ```{python}
@@ -97,7 +107,6 @@ print(lazy
   .filter((pl.col('year') >= 1990) & (pl.col('year') < 2000))
   .select(['year', 'make', 'model'])
 )
-
 ```
 
 ```{python}
@@ -106,19 +115,16 @@ print(lazy
   .select(['year', 'make', 'model'])
   .explain()
 )
-
 ```
 
 ## Data Type Inference and Manual Overrides
 
 ```{python}
 print(df.dtypes)
-
 ```
 
 ```{python}
 print(df.schema)
-
 ```
 
 ```{python}
@@ -129,12 +135,10 @@ cols = ['year', 'make', 'model', 'displ', 'cylinders', 'trany', 'drive',
 
 ```{python}
 print(df.select(cols))
-
 ```
 
 ```{python}
 print(df.select(pl.col(cols)))
-
 ```
 
 ```{python}
@@ -143,7 +147,6 @@ print(df
   .select(pl.col(pl.Int64))
   .describe()
 )
-
 ```
 
 ```{python}
@@ -154,7 +157,6 @@ print(df
                 pl.col('highway08').cast(pl.UInt8),
                 pl.col('city08').cast(pl.UInt8))
 )
-
 ```
 
 ```{python}
@@ -162,7 +164,6 @@ print(df
   .select(pl.col(cols))
   .with_columns(pl.col('year').cast(pl.Int8))
 )
-
 ```
 
 ## Automatic Type Shrinking
@@ -171,7 +172,6 @@ print(df
 print(df
   .select(pl.col(cols).shrink_dtype())
 )
-
 ```
 
 ## Float Conversion
@@ -186,7 +186,6 @@ print(df
   .select(pl.col(pl.Float64))
   .sample(n=10, seed=42)
 )
-
 ```
 
 ```{python}
@@ -200,7 +199,6 @@ print(df
                 pl.col('barrels08').cast(pl.Float32),
                 )
 )
-
 ```
 
 ## Extracting Numbers from Strings
@@ -209,7 +207,6 @@ print(df
 print(df
  .select('trany')
 )
-
 ```
 
 ```{python}
@@ -220,7 +217,6 @@ print(df
               .str.contains('automatic') 
               .alias('automatic'))         
 )
-
 ```
 
 ```{python}
@@ -231,7 +227,6 @@ print(df
               .str.contains('automatic') 
               .alias('is_automatic'))         
 )
-
 ```
 
 ```{python}
@@ -241,7 +236,6 @@ print(df
               .str.to_lowercase()
               .str.contains('automatic')) 
 )
-
 ```
 
 ```{python}
@@ -250,7 +244,6 @@ print(df
  .len()
  .sort('len', descending=True)          
 )
-
 ```
 
 ```{python}
@@ -259,7 +252,14 @@ print(df
            .value_counts(sort=True))         
  .unnest('trany')
 )
+```
 
+```{python}
+(
+    df
+    .select(pl.col('trany')).to_series()
+    .value_counts(sort=True)
+)
 ```
 
 ```{python}
@@ -267,7 +267,6 @@ print(df
   .filter(pl.col('trany').is_null())
   .select('year', 'make', 'model', 'VClass')          
 )          
-
 ```
 
 ```{python}
@@ -278,7 +277,6 @@ print(df
               .fill_null(True)                 
               )  
 )
-
 ```
 
 ```{python}
@@ -287,7 +285,6 @@ print(df
             .str.extract(r'(\d+)')
             .cast(pl.UInt8))
 )          
-
 ```
 
 ```{python}
@@ -297,7 +294,6 @@ print(df
             .cast(pl.UInt8)
             .unique())
 )          
-
 ```
 
 ```{python}
@@ -307,7 +303,6 @@ print(df
             .cast(pl.UInt8))
  .filter(pl.col('num_gears').is_null())          
 )          
-
 ```
 
 ```{python}
@@ -322,7 +317,6 @@ print(df
             .fill_null(6)
               ) 
 )
-
 ```
 
 ## String Columns
@@ -339,7 +333,6 @@ print(df
                 )
   .select(pl.col(pl.String))
 )
-
 ```
 
 ```{python}
@@ -352,7 +345,6 @@ print(df
                'fuelType']).cast(pl.Categorical),
        )
 )
-
 ```
 
 ```{python}
@@ -371,8 +363,6 @@ print(df
              .cast(pl.UInt8)
              .fill_null(6))                      
 )
-
-
 ```
 
 ## Parsing Dates
@@ -394,8 +384,6 @@ print(df
              .fill_null(6))    
   .select(pl.col('createdOn').str.to_datetime('%a %b %d %H:%M:%S %Z %Y'))                    
 )
-
-
 ```
 
 ```{python}
@@ -423,7 +411,6 @@ def tweak_auto(df):
 
 ```{python}
 print(tweak_auto(df))
-
 ```
 
 ```{python}
@@ -440,7 +427,6 @@ df.select(cols).estimated_size(unit='mb')
 
 ```{python}
 print(tweak_auto(df).describe())
-
 ```
 
 ```{python}
@@ -450,7 +436,6 @@ print(tweak_auto(df)
  .corr()
  .pipe(lambda df_: df_.insert_column(0, pl.Series('names', df_.columns)))
 )
-
 ```
 
 ## Being Lazy
@@ -482,7 +467,6 @@ def tweak_auto(df):
     )
                       
 print(tweak_auto(lazy).collect())
-
 ```
 
 ## Chapter Functions and Methods
@@ -528,7 +512,6 @@ autos = tweak_auto(raw)
 
 ```{python}
 print(autos)
-
 ```
 
 ## Adding Columns
@@ -539,14 +522,12 @@ print(autos
           mpg_ratio=(pl.col('highway08') / pl.col('city08')))
           
  )
-
 ```
 
 ```{python}
 print(autos
   .with_columns(mpg_ratio=pl.col('highway08') / pl.col('city08'))
  )
-
 ```
 
 ## Simulating the Index
@@ -555,7 +536,6 @@ print(autos
 print(autos
  .with_row_index('index')
 )          
-
 ```
 
 ## Removing Columns
@@ -578,8 +558,6 @@ final_cols = ['year', 'make', 'model', 'displ', 'cylinders', 'trany',
 print(autos
  .select(final_cols)
 )
-
-
 ```
 
 ```{python}
@@ -588,7 +566,6 @@ print(autos
            .exclude(['createdOn', 'barrels08'])
            .name.suffix('_auto'))
 )
-
 ```
 
 ## Renaming Columns
@@ -600,8 +577,6 @@ print(autos
                highway_mpg=pl.col('highway08'))
  .select(final_cols)
  )
-
-
 ```
 
 ```{python}
@@ -623,8 +598,6 @@ print(autos
           'highway08':'highway_mpg'})
  .select(final_cols)
  )
-
-
 ```
 
 ## Joining DataFrames
@@ -638,7 +611,6 @@ trucks = pl.DataFrame(
    })
 
 print(trucks)
-
 ```
 
 ```{python}
@@ -651,7 +623,6 @@ manufacturer = pl.DataFrame(
     })
 
 print(manufacturer)
-
 ```
 
 ```{python}
@@ -664,7 +635,6 @@ print(manufacturer.join(trucks, how='left'))
 ```{python}
 print(manufacturer.join(trucks, how='left', left_on='name', 
                         right_on='make'))
-
 ```
 
 ## Right Joins
@@ -672,14 +642,12 @@ print(manufacturer.join(trucks, how='left', left_on='name',
 ```{python}
 print(trucks.join(manufacturer, how='left', right_on='name', 
                   left_on='make'))
-
 ```
 
 ## Inner Joins
 
 ```{python}
 print(manufacturer.join(trucks, left_on='name', right_on='make'))
-
 ```
 
 ## Outer Joins
@@ -687,7 +655,6 @@ print(manufacturer.join(trucks, left_on='name', right_on='make'))
 ```{python}
 print(manufacturer.join(trucks, how='outer', left_on='name', 
                         right_on='make'))
-
 ```
 
 ## Semi Joins
@@ -695,7 +662,6 @@ print(manufacturer.join(trucks, how='outer', left_on='name',
 ```{python}
 print(manufacturer.join(trucks, how='semi', left_on='name', 
                         right_on='make'))
-
 ```
 
 ## Cross Joins
@@ -704,7 +670,6 @@ print(manufacturer.join(trucks, how='semi', left_on='name',
 sizes = pl.DataFrame({'size': ['small', 'medium', 'large'],})
 colors = pl.DataFrame({'color': ['red', 'green', ],})
 print(sizes.join(colors, how='cross'))
-
 ```
 
 ## Anti Joins
@@ -712,13 +677,11 @@ print(sizes.join(colors, how='cross'))
 ```{python}
 print(manufacturer.join(trucks, how='anti', left_on='name', 
                         right_on='make'))
-
 ```
 
 ```{python}
 print(trucks.join(manufacturer, how='anti', right_on='name', 
                   left_on='make'))
-
 ```
 
 ## Join Validation
@@ -742,14 +705,12 @@ print(manufacturer.join(trucks, left_on='name', right_on='make',
 ```{python}
 print(manufacturer.join(trucks, left_on='name', right_on='make',
                         validate='1:m'))
-
 ```
 
 ```{python}
 print(trucks
   .filter(pl.col('make').is_duplicated())
 )
-
 ```
 
 ## Speeding up Joins with Sorting
@@ -766,7 +727,6 @@ print(inv_raw
   .select(['state_abbr', 'gisjoin', 'city_id', 'city_name',
            'fuel_type_org', 'fuel_type', 'class', '2000', '2001'])
 )
-
 ```
 
 ```{python}
@@ -788,7 +748,6 @@ inv_yr = (inv_raw
 
 ```{python}
 print(inv_yr)
-
 ```
 
 ```{python}
@@ -829,7 +788,6 @@ agg_yr = (autos
 
 ```{python}
 print(agg_yr)
-
 ```
 
 ```{python}
@@ -837,7 +795,6 @@ print (agg_yr
  .join(inv_yr, left_on=['year', 'simple_class', 'fuel_type'], 
        right_on=['year', 'class', 'fuel_type'])
 )
-
 ```
 
 ```{python}
@@ -922,7 +879,6 @@ print(agg_yr
  .pivot(index='year', columns='simple_class', values='mean_mpg', 
         aggregate_function='mean')
 )
-
 ```
 
 ```{python}
@@ -951,7 +907,6 @@ print(autos
  .tail(10)
  .vstack(autos.head(10))
 )
-
 ```
 
 ## Reshaping and Pivoting Data
@@ -965,7 +920,6 @@ top_n = (autos
 )
 
 print(top_n)
-
 ```
 
 ```{python}
@@ -974,7 +928,6 @@ print(autos
  .pivot(index='year', columns='make', values='city08', 
         aggregate_function='median')
 )
-
 ```
 
 ```{python}
@@ -986,7 +939,6 @@ pivoted = (autos
 )
 
 print(pivoted)
-
 ```
 
 ```{python}
@@ -999,7 +951,6 @@ pivoted = (autos
 )
 
 print(pivoted)
-
 ```
 
 ```{python}
@@ -1011,14 +962,12 @@ pivoted = (autos
 )
 
 print(pivoted)
-
 ```
 
 ## Melting Data
 
 ```{python}
 print(pivoted)
-
 ```
 
 ```{python}
@@ -1026,7 +975,6 @@ print(pivoted
  .melt(id_vars='year', value_vars=['Chevrolet', 'Ford', 'GMC', 
                                    'Toyota', 'Dodge'])
 )
-
 ```
 
 ```{python}
@@ -1035,7 +983,6 @@ print(pivoted
                                    'Toyota', 'Dodge'],
        value_name='median_city_mpg', variable_name='make')
 )
-
 ```
 
 ## Finding Duplicates
@@ -1044,28 +991,24 @@ print(pivoted
 print(autos
  .select(pl.col('highway08').is_duplicated())
 )
-
 ```
 
 ```{python}
 print(autos
  .filter(pl.col('highway08').is_duplicated())
 )
-
 ```
 
 ```{python}
 print(autos
  .select(pl.struct(pl.col('year'), pl.col('model')))
 )
-
 ```
 
 ```{python}
 print(autos
  .select(pl.struct(pl.col('year'), pl.col('model')).is_duplicated())
 )
-
 ```
 
 ```{python}
@@ -1073,7 +1016,6 @@ print(autos
  .filter(pl.struct(pl.col('year'), pl.col('model')).is_duplicated())
  .sort('year', 'model')
 )
-
 ```
 
 ## Finding Missing Values
@@ -1081,14 +1023,12 @@ print(autos
 ```{python}
 missing_df = pl.DataFrame({'val': [-1.1, 0, 2.3, None, 5.7, 7]})
 print(missing_df)
-
 ```
 
 ```{python}
 print(missing_df
  .with_columns(val2=pl.col('val')/pl.col('val'))
 )
-
 ```
 
 ```{python}
@@ -1100,7 +1040,6 @@ print(missing_df
                interpolate=pl.col('val2').interpolate()
   )   
 )
-
 ```
 
 ```{python}
@@ -1112,7 +1051,6 @@ print(missing_df
                max=pl.col('val').fill_null(strategy='max')
   )
 )
-
 ```
 
 ```{python}
@@ -1123,7 +1061,6 @@ print(missing_df
                nearest=pl.col('val').interpolate('nearest')
                )
 )
-
 ```
 
 ```{python}
@@ -1146,14 +1083,12 @@ val,val2
 
 ```{python}
 print(pl.read_csv('missing.csv'))
-
 ```
 
 ```{python}
 print(missing_df
  .with_columns(val2=pl.col('val')/pl.col('val'))
  .to_pandas())
-
 ```
 
 ## Third-Party Libraries and Missing Values
@@ -1163,13 +1098,11 @@ X = (missing_df
  .with_columns(val2=pl.col('val')/pl.col('val')))
 
 print(X)
-
 ```
 
 ```{python}
 y = pl.Series(range(6))
 print(y)
-
 ```
 
 ```{python}
@@ -1195,13 +1128,11 @@ reg.fit(X, y)
 
 ```{python}
 print(reg.predict(X))
-
 ```
 
 ```{python}
 import numpy as np
 np.sin(X)
-
 ```
 
 ## Additional Column Selectors and Missing Values
@@ -1214,7 +1145,6 @@ import polars.selectors as cs
 print(autos
 .select(cs.numeric().is_null().sum())
 )
-
 ```
 
 ```{python}
@@ -1225,14 +1155,12 @@ print(no_dates_or_bools)
 
 ```{python}
 print(cs.expand_selector(autos, no_dates_or_bools))
-
 ```
 
 ```{python}
 print(autos
 .select(pl.col('displ').mean().over(['year', 'make']))
 )
-
 ```
 
 ```{python}
@@ -1242,7 +1170,6 @@ print(autos
 .filter(pl.col('displ').is_null())
 .select(['year', 'make', 'displ', 'mean_displ'])
 )
-
 ```
 
 ```{python}
@@ -1256,7 +1183,6 @@ print(autos
 .filter(pl.col('displ').is_null())
 .select(['year', 'make', 'displ', 'mean_displ'])
 )
-
 ```
 
 ```{python}
@@ -1264,7 +1190,6 @@ print(autos
 .with_columns(pl.col('displ').fill_null(mean_displ))
 .select(['year', 'make', 'model', 'displ'])
 )
-
 ```
 
 ## Map and Apply
@@ -1277,7 +1202,6 @@ def debug(thing):
 print(autos
  .select(pl.col('make').map_batches(debug))
 )
-
 ```
 
 ```{python}
@@ -1289,7 +1213,6 @@ def standardize(arr_pl):
 print(autos
  .select(city08_standardized=pl.col('city08').map_batches(standardize))
 )
-
 ```
 
 ```{python}
@@ -1299,7 +1222,6 @@ def standardize_pl(col):
 print(autos
  .select(city08_standardized=standardize_pl(pl.col('city08')))
 )
-
 ```
 
 ## Chapter Functions and Methods
@@ -1318,7 +1240,6 @@ url = 'https://github.com/mattharrison/datasets/raw/' \
 import polars as pl
 raw = pl.read_csv(url)
 print(raw)
-
 ```
 
 ```{python}
@@ -1331,7 +1252,6 @@ def tweak_twit(df):
 
 twit = tweak_twit(raw)
 print(twit)
-
 ```
 
 ## Validating the Data
@@ -1340,21 +1260,18 @@ print(twit)
 col = pl.col('Tweet permalink')
 print([m for m in dir(col.str)
     if not m.startswith('_')])
-
 ```
 
 ```{python}
 print(sorted([m for m in 
       set(dir(col.str)) & set(dir(''))
       if not m.startswith('_')]))           
-
 ```
 
 ```{python}
 print(sorted([m for m in 
       set(dir(col.str)) - set(dir(''))
       if not m.startswith('_')]))           
-
 ```
 
 ```{python}
@@ -1366,27 +1283,23 @@ print(sorted([m for m in
 print(twit
  .filter(~col.str.starts_with('https://twitter.com/'))
 )
-
 ```
 
 ## Extracting the Username
 
 ```{python}
 print('https://metasnake.com/effective-polars'.split('/'))
-
 ```
 
 ```{python}
 print(twit
  .select(col.str.split('/'))
 )
-
 ```
 
 ```{python}
 print([m for m in dir(col.list)
     if not m.startswith('_')])
-
 ```
 
 ```{python}
@@ -1394,7 +1307,6 @@ print(twit
  .select(col.str.split('/')
     .list.len())
 )
-
 ```
 
 ```{python}
@@ -1402,7 +1314,6 @@ print(twit
  .select(col.str.split('/')
     .list.to_struct())
 )
-
 ```
 
 ```{python}
@@ -1411,7 +1322,6 @@ print(twit
     .list.to_struct())
  .unnest('Tweet permalink')
 )
-
 ```
 
 ```{python}
@@ -1421,7 +1331,6 @@ print(twit
  .unnest('Tweet permalink')
  .to_struct()          
 )
-
 ```
 
 ```{python}
@@ -1430,7 +1339,6 @@ print(twit
     .list.join('/')
  )
 )
-
 ```
 
 ```{python}
@@ -1439,7 +1347,6 @@ print(twit
     .list.to_struct())
  .select(pl.all().map_elements(lambda elem: list(elem)))          
 )
-
 ```
 
 ```{python}
@@ -1447,7 +1354,6 @@ print(twit
  .with_columns(username=col.str.split('/')
     .list.get(3))
 )
-
 ```
 
 ```{python}
@@ -1455,7 +1361,6 @@ print(twit
  .with_columns(username=col.str.split('/')
     .list[3])
 )
-
 ```
 
 ## Extract the Username with a Regular Expression
@@ -1465,7 +1370,6 @@ regex = r'^https:\/\/twitter\.com\/([a-zA-Z0-9_]+)\/status\/(\d+)$'
 print(twit
  .select(user=col.str.extract(regex, group_index=1))
 )
-
 ```
 
 ## Counting Words and Mentions
@@ -1475,21 +1379,18 @@ tweet_col = pl.col('Tweet text')
 print(twit
  .select(tweet_col.str.split(' '))
 )
-
 ```
 
 ```{python}
 print(twit
  .select(tweet_col.str.split(' ').list.len())
 )
-
 ```
 
 ```{python}
 print(twit
  .with_columns(word_count=tweet_col.str.split(' ').list.len())
 )
-
 ```
 
 ```{python}
@@ -1497,7 +1398,6 @@ print(twit
  .select(tweet_col.str.split(' ').list.eval(
     pl.element().str.starts_with('@')))
 )
-
 ```
 
 ```{python}
@@ -1516,7 +1416,6 @@ print(twit
          .list.eval(pl.element().str.starts_with('@'))
          .list.sum())
 )
-
 ```
 
 ```{python}
@@ -1538,7 +1437,6 @@ print(twit
                    .list.eval(pl.element().str.starts_with('@'))
                    .list.sum())
 )
-
 ```
 
 ## Checking for Emojis
@@ -1549,7 +1447,6 @@ tweet_col = pl.col('Tweet text')
 print(twit
  .select(tweet_col, has_emoji=tweet_col.str.contains(non_ascii))
 )
-
 ```
 
 ```{python}
@@ -1559,7 +1456,6 @@ print(twit
      has_emoji=tweet_col.str.contains(non_ascii))
  .corr()
 )
-
 ```
 
 ```{python}
@@ -1588,7 +1484,6 @@ print(twit
  .select('time', 'engagements', tweet_col,
      reply=tweet_col.str.starts_with('@'))
 )
-
 ```
 
 ```{python}
@@ -1600,7 +1495,6 @@ print(twit
         aggregate_function='sum')
  .rename({'false': 'original', 'true': 'reply'})
 )
-
 ```
 
 ```
@@ -1658,7 +1552,6 @@ pip install 'polars[plot]'
 ```{python}
 col = pl.col('make')
 print(sorted(att for att in dir(col) if not att.startswith('_')))
-
 ```
 
 ```{python}
@@ -1670,14 +1563,12 @@ print(autos
          q99_city=city.quantile(.99)
          )
 )
-
 ```
 
 ```{python}
 print(autos
 .with_columns(mean_city=city.mean())
 )
-
 ```
 
 ## Lists
@@ -1690,7 +1581,6 @@ tests = pl.DataFrame({'name':['Tom', 'Sally', 'Jose'],
                       'test4':[94, 92, 99]})
 
 print(tests)
-
 ```
 
 ```{python}
@@ -1701,12 +1591,10 @@ print(tests
 .with_columns(slice_scores=pl.col('sorted_scores').list.slice(2,4))
 .with_columns(sum_scores=pl.col('slice_scores').list.sum())
 )
-
 ```
 
 ```{python}
 print(tests.select(pl.all().exclude('name')))
-
 ```
 
 ```{python}
@@ -1719,12 +1607,10 @@ print(tests.select(pl.all().exclude('name')))
 
 ```{python}
 print(tests.select(cs.all() - pl.col('name')))
-
 ```
 
 ```{python}
 print(tests.select(cs.starts_with('test')))
-
 ```
 
 ```{python}
@@ -1732,7 +1618,6 @@ print(tests
 .select(scores=pl.concat_list(cs.matches(r'test\d+')))
 .with_columns(max=pl.col('scores').list.max())          
 )
-
 ```
 
 ## GroupBy Operations 
@@ -1748,7 +1633,6 @@ print(autos
  .group_by('make')
  .agg(mean_city=pl.col('city08').mean())
 )
-
 ```
 
 ```{python}
@@ -1756,7 +1640,6 @@ print(autos
  .group_by('make', maintain_order=True)
  .agg(mean_city=pl.col('city08').mean())
 )
-
 ```
 
 ```{python}
@@ -1765,7 +1648,6 @@ print(autos
  .agg(mean_city=pl.col('city08').mean())
  .sort('make')
 )
-
 ```
 
 ```{python}
@@ -1775,7 +1657,6 @@ print(autos
  .agg(mean_city=pl.col('city08').mean())
  .sort('make')
 )
-
 ```
 
 ## Multiple Aggregations
@@ -1791,7 +1672,6 @@ print (autos
   )
  .sort('make')
 )
-
 ```
 
 ## Grouping By Multiple Columns
@@ -1803,7 +1683,6 @@ print(autos
  .agg(mean_city08=pl.col('city08').mean())
  .sort(['make', 'year'])
  )
-
 ```
 
 ## Pivoting with Multiple Aggregations
@@ -1817,7 +1696,6 @@ top3 = (autos
  )
 
 print(top3)
-
 ```
 
 ```{python}
@@ -1828,7 +1706,6 @@ print(autos
       max_city08=pl.col('city08').max())
  .sort(['year', 'make'])
 )
-
 ```
 
 ```{python}
@@ -1841,7 +1718,6 @@ print(autos
  .pivot(index='year', columns='make', 
         values=['min_city08', 'max_city08'])
 )
-
 ```
 
 ```{python}
@@ -1863,11 +1739,9 @@ fig, ax = plt.subplots(figsize=(10, 6))
  .plot(ax=ax, color=['#55c667', '#2f8738', '#2c4279', '#141f38', 
                      '#d4e116', '#afba12'])
 )
-
 ```
 
 ```{python}
-
 res = (autos
  .filter(pl.col('make').is_in(top3['make']))
  .group_by(['year', 'make'])
@@ -1898,7 +1772,6 @@ print(autos
                .mean()
                .over('make'))
 )
-
 ```
 
 ```{python}
@@ -1908,7 +1781,6 @@ print(autos
  .filter(pl.col('make').cast(pl.String)
             .is_in(['Alfa Romeo', 'Ferrari', 'Dodge']))
 )
-
 ```
 
 ## Grouping to Lists
@@ -1918,7 +1790,6 @@ print(autos
  .group_by('make')
  .agg(pl.all())
 )
-
 ```
 
 ```{python}
@@ -1927,7 +1798,6 @@ print(autos
  .group_by('make')
  .agg(pl.all().unique().drop_nulls().len().name.suffix('_len'))          
 )
-
 ```
 
 ```{python}
@@ -1937,7 +1807,6 @@ print(autos
     .over('make')
     .name.suffix('_len'))     
 )
-
 ```
 
 ```{python}
@@ -1947,7 +1816,6 @@ print(autos
             .over('make')
             .name.suffix('_len'))
 )
-
 ```
 
 ## Chapter Methods and Functions
@@ -1968,7 +1836,6 @@ print(autos
 print(autos
   .filter(pl.col('city08') > 40)
 )
-
 ```
 
 ```{python}
@@ -1976,7 +1843,6 @@ print(autos
   .filter(pl.col('city08') > 40)
   .filter(pl.col('make') == 'Toyota')
 )
-
 ```
 
 ```{python}
@@ -1984,14 +1850,12 @@ print(autos
   .filter(pl.col('city08') > 40,
           pl.col('make') == 'Toyota')
 )
-
 ```
 
 ```{python}
 print(autos
   .filter((pl.col('make') == 'Toyota') & (pl.col('city08') > 40))
 )
-
 ```
 
 ```{python}
@@ -2018,7 +1882,6 @@ print(autos
 print(autos
  .filter(make='Ford')
 )
-
 ```
 
 ## Filtering with Dates
@@ -2030,7 +1893,6 @@ print(autos
  .filter(pl.col('createdOn') >= mar2018)
  .sort('createdOn')
 )
-
 ```
 
 ```{python}
@@ -2039,7 +1901,6 @@ print(autos
  .sort('city08')
  .select(['year', 'make', 'model', 'VClass', 'city08'])
 )
-
 ```
 
 ```{python}
@@ -2049,7 +1910,6 @@ print(autos
 .filter(pl.col('createdOn').is_between(mar2013, mar2018))
 .sort('createdOn')
 )
-
 ```
 
 ## Advanced Filtering Techniques
@@ -2062,7 +1922,6 @@ print(autos
   .filter(standardize(pl.col('city08')) > 3)
   .select(['year', 'make', 'model', 'VClass', 'city08'])
 )
-
 ```
 
 ```{python}
@@ -2070,7 +1929,6 @@ print(autos
   .filter(standardize(pl.col('city08')).over(['year', 'make']) > 3)
   .select(['year', 'make', 'model', 'VClass', 'city08'])
 )
-
 ```
 
 ## More Filtering with Window Expressions
@@ -2081,7 +1939,6 @@ print(autos
      model_age=(pl.col('year').max() - pl.col('year').min())
                 .over('model'))
 )
-
 ```
 
 ```{python}
@@ -2091,7 +1948,6 @@ print(autos
                .over('model'))
  .filter(pl.col('model_age') > 10)
 )
-
 ```
 
 ## Manipulating Data with Conditional Expressions
@@ -2101,14 +1957,12 @@ print(autos
 .group_by('fuelType')
 .len()
 )
-
 ```
 
 ```{python}
 print(autos
  .select(pl.col('fuelType').value_counts(sort=True))
 )     
-
 ```
 
 ```{python}
@@ -2116,7 +1970,6 @@ print(autos
  .select(pl.col('fuelType').value_counts(sort=True))
  .unnest('fuelType')          
 )     
-
 ```
 
 ```{python}
@@ -2125,7 +1978,6 @@ print(autos
          .value_counts(sort=True)
          .struct[0])
 )     
-
 ```
 
 ```{python}
@@ -2159,7 +2011,6 @@ simple = (pl.when(fuel_str.str.contains('Diesel')).then(pl.lit('Diesel'))
 print(autos
 .with_columns(simple.alias('fuelTypeSimple'))
 )
-
 ```
 
 ```{python}
@@ -2185,7 +2036,6 @@ print(autos
 .with_columns(fuelTypeSimple=simple)
 .filter(pl.col('fuelTypeSimple') == 'CNG')
 )
-
 ```
 
 ```{python}
@@ -2198,7 +2048,6 @@ simple = (pl.when(fuel_str.str.contains('Diesel')).then(pl.lit('Diesel'))
 print(autos
 .filter(simple == 'CNG')
 )
-
 ```
 
 ```{python}
@@ -2216,7 +2065,6 @@ top_expr = (pl.when(pl.col('make').is_in(top_n))
 print(autos
  .with_columns(simple_make=top_expr)
 )
-
 ```
 
 ```{python}
@@ -2235,7 +2083,6 @@ def limit(col_name, n=10, default='other'):
 print(autos
  .with_columns(simple_make=limit('make'))
 )    
-
 ```
 
 ```{python}
@@ -2243,7 +2090,6 @@ with pl.StringCache():
     autos2 = tweak_auto(raw)
     print(autos2
      .select(simple_make=limit('make', 20, 'other')))
-
 ```
 
 ## Handling Missing Data
@@ -2252,7 +2098,6 @@ with pl.StringCache():
 print(autos
  .select(pl.col('*').is_null())
 )
-
 ```
 
 ```{python}
@@ -2264,35 +2109,30 @@ int(True)
 print(autos
  .select(pl.all().is_null().sum())
 )
-
 ```
 
 ```{python}
 print(autos
  .select(pl.all().null_count())
 )
-
 ```
 
 ```{python}
 print(autos
  .null_count()
 )
-
 ```
 
 ```{python}
 print(autos
 .describe()
 )
-
 ```
 
 ```{python}
 print(autos
  .select(pl.all().is_null().mean() * 100)
 )
-
 ```
 
 ```{python}
@@ -2302,7 +2142,6 @@ print(autos
            for col in df_.select(pl.col(pl.Float64)> 0) 
            if col.all()]))
 )
-
 ```
 
 ```{python}
@@ -2313,7 +2152,6 @@ print(autos
            for col in df_.select(pl.col(pl.Float64)> 0) 
            if col.all()]))
 )
-
 ```
 
 ## Dropping Rows with Missing Values
@@ -2335,21 +2173,18 @@ pca.fit(autos.select(cs.numeric()))
 print(autos
  .drop_nulls()
 )
-
 ```
 
 ```{python}
 print(autos
  .drop_nulls(subset=(['cylinders', 'displ']))
 )
-
 ```
 
 ```{python}
 print(autos
  .drop_nulls(subset=cs.numeric())
 )
-
 ```
 
 ```{python}
@@ -2382,7 +2217,6 @@ print(autos
 .filter(pl.col('num_gears').is_null() & 
         pl.col('is_automatic').is_null())
 )
-
 ```
 
 ```{python}
@@ -2390,7 +2224,6 @@ print(autos
  .filter(pl.all_horizontal(
      pl.col('num_gears', 'is_automatic').is_null()))
 )
-
 ```
 
 ```{python}
@@ -2398,7 +2231,6 @@ print(autos
  .filter(~pl.all_horizontal(
      pl.col('num_gears', 'is_automatic').is_null()))
 )
-
 ```
 
 ## Filling in Missing Values
@@ -2407,7 +2239,6 @@ print(autos
 print(autos
  .with_columns(pl.col('cylinders').fill_null(0))
 )
-
 ```
 
 ```{python}
@@ -2415,7 +2246,6 @@ print(autos
 .select(cyl_mean=pl.col('cylinders').mean(),
         cyl_fill0_mean=pl.col('cylinders').fill_null(0).mean())
 )
-
 ```
 
 ## Filling in Time Series Missing Values
@@ -2425,7 +2255,6 @@ import numpy as np
 snow = pl.DataFrame({'depth': [0, 0, np.nan, 9.1, 11.3, None, 7.8, 
                                15, 20]})
 print(snow)
-
 ```
 
 ```{python}
@@ -2438,15 +2267,12 @@ print(snow
    depth_mean=pl.col('depth').fill_null(strategy='mean'),
  )
 )
-
-
 ```
 
 ```{python}
 print(snow
  .describe()
 )
-
 ```
 
 ```{python}
@@ -2459,7 +2285,6 @@ print(snow
    depth_mean=pl.col('depth').fill_null(strategy='mean')
  )
 )
-
 ```
 
 ```{python}
@@ -2491,7 +2316,6 @@ imp_pl = (snow
  )
 )
 print(imp_pl)
-
 ```
 
 ```{python}
@@ -2534,7 +2358,6 @@ sorted(names)
 
 ```{python}
 sorted(names, key=len)
-
 ```
 
 ```{python}
@@ -2542,21 +2365,18 @@ print(autos
  .with_columns(pl.col('make').cast(pl.String))
  .sort(by=pl.col('make').str.len_chars())
 )
-
 ```
 
 ```{python}
 print(autos
  .sort('year')
 )
-
 ```
 
 ```{python}
 print(autos
 .sort((pl.col('city08') + pl.col('highway08'))/2)
 )
-
 ```
 
 ```{python}
@@ -2565,21 +2385,18 @@ print(autos
 )
 shape: (41_144, 15)
 │ year   make         model       .   createdOn   is_automa   num_gears │
-
 ```
 
 ```{python}
 print(autos
 .with_columns(make_avg=pl.col('city08').mean().over(pl.col('make')))
 )
-
 ```
 
 ```{python}
 print(autos
 .sort(pl.col('city08').mean().over(pl.col('make')))
 )
-
 ```
 
 ## Sorting by Multiple Columns
@@ -2588,14 +2405,12 @@ print(autos
 print(autos
  .sort(['year', 'make'])
 )
-
 ```
 
 ```{python}
 print(autos
  .sort(['year', 'make', 'model'])
 )
-
 ```
 
 ```{python}
@@ -2603,7 +2418,6 @@ print(autos
  .sort(['year', 'make', 'model'], 
        descending=[True, False, False])
 )
-
 ```
 
 ```{python}
@@ -2613,7 +2427,6 @@ print(autos
  .sort(['year', 'make', 'model'], 
        descending=[True, False, False])
 )
-
 ```
 
 ## Specifying Custom Ordering for Categorical Columns
@@ -2623,7 +2436,6 @@ print(autos
  .with_columns(month=pl.col('createdOn').dt.strftime('%B'))
  .sort('month')
 )
-
 ```
 
 ```{python}
@@ -2637,7 +2449,6 @@ with pl.StringCache():
                 .cast(pl.Categorical))
        .sort('month')
     )
-
 ```
 
 ```{python}
@@ -2653,7 +2464,6 @@ def create_month_order():
     )
 
 print(create_month_order().sort('month'))
-
 ```
 
 ```{python}
@@ -2687,7 +2497,6 @@ autos = tweak_auto(raw)
 ```{python}
 print(tweak_auto(raw)
  .sort('make'))
-
 ```
 
 ## Enums and Ordering
@@ -2708,7 +2517,6 @@ Julia Banks,2009-10-24'''
 
 students = pl.read_csv(io.StringIO(data))
 print(students)
-
 ```
 
 ```{python}
@@ -2718,7 +2526,6 @@ print(students
   .with_columns(month=bday.dt.strftime('%B'))
   .sort('month')
 )     
-
 ```
 
 ```{python}
@@ -2733,7 +2540,6 @@ print(students
   .with_columns(month=bday.dt.strftime('%B').cast(month_type))
   .sort('month')
 ) 
-
 ```
 
 ```{python}
@@ -2753,7 +2559,6 @@ December,Christmas Day'''
 
 holidays = pl.read_csv(io.StringIO(holiday_data))
 print(holidays)
-
 ```
 
 ```{python}
@@ -2762,7 +2567,6 @@ print(students
   .with_columns(month=bday.dt.strftime('%B'))
   .join(holidays, left_on='month', right_on='Month')
   .sort('month'))
-
 ```
 
 ```{python}
@@ -2784,7 +2588,6 @@ print(students
   .join(holidays.with_columns(pl.col('Month').cast(pl.Categorical)),
      left_on='month', right_on='Month')
   .sort('month'))
-
 ```
 
 ```{python}
@@ -2794,7 +2597,6 @@ print(students
   .join(holidays.with_columns(pl.col('Month').cast(month_type)),
      left_on='month', right_on='Month')
   .sort('month'))
-
 ```
 
 ## Group Ordering and maintain_order
@@ -2804,7 +2606,6 @@ print(autos
  .group_by(pl.col('make'))
  .len()
 )
-
 ```
 
 ```{python}
@@ -2812,7 +2613,6 @@ print(autos
  .group_by(pl.col('make'), maintain_order=True)
  .len()
 )
-
 ```
 
 ```{python}
@@ -2821,7 +2621,6 @@ print(autos
  .len()
  .sort('make')          
 )
-
 ```
 
 ## Stable Sorting
@@ -2834,21 +2633,18 @@ students = pl.DataFrame({
 })
 
 print(students)
-
 ```
 
 ```{python}
 print(students
     .sort('age')
 )
-
 ```
 
 ```{python}
 print(students
     .sort('grade')
 )
-
 ```
 
 ## Sorting and Filtering
@@ -2938,7 +2734,6 @@ def tweak_river(df_):
 raw = pl.read_csv('data/devilclean.txt', separator='\t')
 dd = tweak_river(raw)
 print(dd)
-
 ```
 
 ## Converting to Dates
@@ -2946,7 +2741,6 @@ print(dd)
 ```{python}
 print(pl.read_csv('data/devilclean.txt', separator='\t', 
                   try_parse_dates=True))
-
 ```
 
 ```{python}
@@ -2960,7 +2754,6 @@ print(raw
         #cast=pl.col('datetime').cast(pl.Datetime)
         )
 )
-
 ```
 
 ## Combining Columns to Create Dates
@@ -2971,7 +2764,6 @@ print(raw
  .with_columns(month=pl.col('to_datetime').dt.strftime('%m'),
                year=pl.col('to_datetime').dt.strftime('%Y'))
 )
-
 ```
 
 ```{python}
@@ -2981,7 +2773,6 @@ print(raw
                year=pl.col('to_datetime').dt.strftime('%Y'))
  .select(pl.date(pl.col('year'), pl.col('month'), 1))                   
 )
-
 ```
 
 ## Changing Timezones
@@ -2997,7 +2788,6 @@ print(tweak_river(raw)
 ```{python}
 import pytz
 pytz.all_timezones[:5]
-
 ```
 
 ```{python}
@@ -3018,7 +2808,6 @@ print(raw
                  time_zone='America/Denver', ambiguous='earliest'))
         )
 )
-
 ```
 
 ```{python}
@@ -3034,7 +2823,6 @@ print(raw
         )
 .filter(pl.col('Denver3') != pl.col('Denver2'))
 )
-
 ```
 
 ```{python}
@@ -3065,7 +2853,6 @@ print(dd
  .group_by('year')
  .agg(pl.col(pl.Float64).mean())
  )
-
 ```
 
 ```{python}
@@ -3074,7 +2861,6 @@ print(dd
  .group_by('year', maintain_order=True)
  .agg(pl.col(pl.Float64).mean())
  )
-
 ```
 
 ```{python}
@@ -3098,7 +2884,6 @@ print(dd
  .group_by_dynamic(index_column='datetime', every='1y')
  .agg(pl.col(pl.Float64).mean())
  )
-
 ```
 
 ```{python}
@@ -3107,7 +2892,6 @@ print(dd
  .group_by_dynamic(index_column='datetime', every='1y')
  .agg(pl.col(pl.Float64).mean())
 )
-
 ```
 
 ## Time Intervals
@@ -3118,7 +2902,6 @@ print(dd
  .group_by_dynamic(index_column='datetime', every='2mo')
  .agg(pl.col(pl.Float64).mean())
 )
-
 ```
 
 ```{python}
@@ -3127,7 +2910,6 @@ print(dd
  .group_by_dynamic(index_column='datetime', every='3h4m5s')
  .agg(pl.col(pl.Float64).mean())
 )
-
 ```
 
 ```{python}
@@ -3138,7 +2920,6 @@ print(dd
  .agg(pl.col(pl.Float64).mean(),
      cfs_range=(pl.col('cfs').max() - pl.col('cfs').min()))
 )
-
 ```
 
 ```{python}
@@ -3149,7 +2930,6 @@ print(dd
  .agg(pl.col(pl.Float64).mean(),
      cfs_range=(pl.col('cfs').max() - pl.col('cfs').min()))
 )
-
 ```
 
 ```{python}
@@ -3159,7 +2939,6 @@ print(dd
  .with_columns(pct_of_avg=(pl.col('cfs') / pl.col('year_mean_cfs'))
                   .mul(100).round(2))
 )
-
 ```
 
 ```{python}
@@ -3171,7 +2950,6 @@ print(dd
                pl.col(['cfs', 'gage_height']).mean().over('quarter')
                 .name.suffix('_mean_quarter'))                   
 )
-
 ```
 
 ## Multiple Groupings with Timeseries
@@ -3194,12 +2972,10 @@ abc = pl.DataFrame({'b': [1,2,3],
 
 ```{python}
 print(abc.with_columns(['a', 'b', 'c']))
-
 ```
 
 ```{python}
 print(abc.select(['a', 'b', 'c']))
-
 ```
 
 ```{python}
@@ -3213,7 +2989,6 @@ print(snake
          .select(common_cols)
          )
 )
-
 ```
 
 ```{python}
@@ -3231,7 +3006,6 @@ print(snake
                    by='source')
  .agg(pl.col('gage_height').mean())
 )
-
 ```
 
 ```{python}
@@ -3248,7 +3022,6 @@ print(snake
  .group_by([pl.col('datetime').dt.truncate('1mo'), 'source'])
  .agg(pl.col('gage_height').mean())
 )
-
 ```
 
 ```{python}
@@ -3266,7 +3039,6 @@ print(snake
  .agg(pl.col('gage_height').mean())
  .pivot(columns='source', index='datetime', values='gage_height')
 )
-
 ```
 
 ```{python}
@@ -3301,7 +3073,6 @@ print(dd
  .with_columns(mean_cfs_3mo=pl.col('cfs').mean()
                .rolling('datetime', period='3mo'))
 )
-
 ```
 
 ```{python}
@@ -3337,7 +3108,6 @@ cfs_max = 1_000
 print(dd
 .filter(pl.col('cfs').is_null())
 )
-
 ```
 
 ```{python}
@@ -3351,7 +3121,6 @@ print(dd
  .filter(pl.col('datetime').is_between(jul_7, jul_9))
  .filter(pl.col('cfs').is_null())
 )
-
 ```
 
 ```{python}
@@ -3386,7 +3155,6 @@ print(dd
  .upsample('datetime', every='5m')
  .interpolate()
  )
-
 ```
 
 ```{python}
@@ -3395,7 +3163,6 @@ print(dd
  .group_by_dynamic(index_column='datetime', every='5m')
  .agg(pl.col('cfs').mean())
 )
-
 ```
 
 ```{python}
@@ -3404,7 +3171,6 @@ print(dd
  .group_by_dynamic(index_column='datetime', every='30m')
  .agg(pl.col('cfs').mean())
 )
-
 ```
 
 ## Joining Time Series Data
@@ -3422,7 +3188,6 @@ def tweak_temp(df_):
 
 raw_temp = pl.read_csv(url)
 print(tweak_temp(raw_temp))
-
 ```
 
 ```{python}
@@ -3434,7 +3199,6 @@ dd_daily = (dd
 )
 
 print(dd_daily)
-
 ```
 
 ```{python}
@@ -3591,7 +3355,6 @@ print(autos
  .head(3)          
  .write_csv()
 )          
-
 ```
 
 ```{python}
@@ -3599,7 +3362,6 @@ print(autos
  .head(3)          
  .write_csv(float_precision=2)
 )          
-
 ```
 
 ## Exporting to JSON
@@ -3610,7 +3372,6 @@ import json
 pprint.pprint(json.loads(
    autos.head(2)
        .write_json()))
-
 ```
 
 ## Reading JSON
@@ -3618,7 +3379,6 @@ pprint.pprint(json.loads(
 ```{python}
 from io import StringIO
 print(pl.read_json(StringIO(autos.write_json())))
-
 ```
 
 ```{python}
@@ -3630,20 +3390,17 @@ import pprint
 import json
 pprint.pprint(json.loads(autos.head(2)
        .to_pandas().to_json(orient='records')))
-
 ```
 
 ```{python}
 from_pd = pl.read_json('/tmp/pd.json')
 print(from_pd)
-
 ```
 
 ```{python}
 print(from_pd
  .with_columns(createdOn=pl.from_epoch('createdOn', time_unit='s'))
 )
-
 ```
 
 ## Custom JSON Handling
@@ -3653,13 +3410,11 @@ import pprint
 import json
 pprint.pprint(json.loads(autos.head(2)
        .to_pandas().to_json()))
-
 ```
 
 ```{python}
 import io
 print(pl.read_json(io.StringIO(autos.head(2).to_pandas().to_json())))
-
 ```
 
 ```{python}
@@ -3671,7 +3426,6 @@ print(pl.DataFrame({
     }
     )
 )
-
 ```
 
 ```{python}
@@ -3683,7 +3437,6 @@ print(pl.DataFrame({
     )
    .explode('listy')
 )
-
 ```
 
 ```{python}
@@ -3711,7 +3464,6 @@ print(pl.DataFrame({
        )
     )
 )
-
 ```
 
 ```{python}
@@ -3721,7 +3473,6 @@ print(pl.read_json(io.StringIO(autos.to_pandas().to_json()))
  .explode(pl.all())
  .with_columns(createdOn=pl.from_epoch('createdOn', time_unit='s'))
 )
-
 ```
 
 ## Munging JSON
@@ -3729,13 +3480,11 @@ print(pl.read_json(io.StringIO(autos.to_pandas().to_json()))
 ```{python}
 pprint.pprint(json.loads(autos.head(2).to_pandas()
                           .to_json(orient='split')))
-
 ```
 
 ```{python}
 print(pl.read_json(io.StringIO(autos.to_pandas()
                                 .to_json(orient='split'))))
-
 ```
 
 ```{python}
@@ -3754,7 +3503,6 @@ def split_json_to_dict(json_str):
 ```{python}
 print(pl.DataFrame(
    split_json_to_dict(autos.to_pandas().to_json(orient='split'))))
-
 ```
 
 ## Exporting to Excel
@@ -3769,7 +3517,6 @@ print(pl.DataFrame(
 ```{python}
 a3 = (pl.read_excel('/tmp/autos.xlsx'))
 print(a3)
-
 ```
 
 ## Exporting to Parquet
@@ -3785,7 +3532,6 @@ pd.read_parquet('/tmp/a3.parquet').to_parquet('/tmp/a4.parquet')
 
 a4 = pl.read_parquet('/tmp/a4.parquet')
 print(a4)
-
 ```
 
 ```{python}
@@ -3821,7 +3567,6 @@ with create_engine(uri).connect() as conn:
 
 ```{python}
 print(a4)
-
 ```
 
 ## Using Arrow to Convert DataFrames
@@ -3836,13 +3581,11 @@ GROUP BY year'''
 
 agg = duckdb.sql(sql)
 print(agg)
-
 ```
 
 ```{python}
 pd_agg = agg.pl().to_pandas()
 print(pd_agg)
-
 ```
 
 ```{python}
@@ -3874,7 +3617,6 @@ fig, ax = plt.subplots(figsize=(10, 5))
  .to_pandas()
  .set_index('year')
  .plot(ax=ax, title='Average MPG by Year'))
-
 ```
 
 ## Converting to Pandas
@@ -3887,7 +3629,6 @@ autos2 = (autos.to_pandas(use_pyarrow_extension_array=True)
 
 ```{python}
 autos2.equals(autos)
-
 ```
 
 ## Working with Other Libraries
@@ -3904,12 +3645,10 @@ y = (autos.select(pl.col('city08')))
 
 ```{python}
 print(X)
-
 ```
 
 ```{python}
 print(y)
-
 ```
 
 ```{python}
@@ -3919,7 +3658,6 @@ X_train, X_test, y_train, y_test = train_test_split(X, y)
 xg = xgb.XGBRegressor()
 xg.fit(X_train, y_train)
 xg.score(X_test, y_test)
-
 ```
 
 ## Plotting Residuals with Matplotlib
@@ -3927,14 +3665,12 @@ xg.score(X_test, y_test)
 ```{python}
 residuals = y_test.to_series() - xg.predict(X_test) 
 print(residuals)
-
 ```
 
 ```{python}
 import matplotlib.pyplot as plt
 fig, ax = plt.subplots(figsize=(10, 5))
 ax.scatter(y_test, residuals)
-
 ```
 
 ```{python}
@@ -3944,7 +3680,6 @@ ax.scatter(pl.DataFrame(xg.predict(X_test)) , residuals, alpha=0.1)
 ax.set_title('City MPG Residuals vs. Predicted City MPG')
 ax.set_xlabel('Predicted City MPG')
 ax.set_ylabel('Residuals')
-
 ```
 
 ## PCA of the Autos Data
@@ -3964,7 +3699,6 @@ res = pca.fit_transform(X_std)
 
 ```{python}
 print(res)
-
 ```
 
 ```{python}
@@ -4070,7 +3804,6 @@ result = (df_pl
 )
 
 print(result)
-
 ```
 
 ```{python}
@@ -4148,7 +3881,6 @@ result = (df_pl
     .pivot(index='year', columns='origin', values='avg_city08')
     .sort('year')
 )
-
 ```
 
 ## Lazy Version Take One
@@ -4192,7 +3924,6 @@ result = (df_pl_lazy
 )
 
 print(result)
-
 ```
 
 ```{python}
@@ -4212,7 +3943,6 @@ result = (df_pl_lazy
      .pivot(index='year', columns='origin', values='avg_city08')
      .sort('year')
 )
-
 ```
 
 ## Fetching Data
@@ -4236,7 +3966,6 @@ result = (df_pl_lazy
 )
 
 print(result)
-
 ```
 
 ## Pandas Comparison
@@ -4449,7 +4178,6 @@ port['Price'] = price_df.iloc[-1,:]
 
 ```{python}
 print(port)
-
 ```
 
 ```{python}
@@ -4495,7 +4223,6 @@ price_df['Net_Beta'] = Long_MV_Beta - Short_MV_Beta
 
 ```{python}
 print(price_df)
-
 ```
 
 ## Multiplication Diversion
@@ -4510,30 +4237,25 @@ daily_consumption = pd.DataFrame({'Suzy': [.2, .9, .1],
  index=['meat', 'plants', 'dairy'])
 
 print(days)
-
 ```
 
 ```{python}
 print(daily_consumption)
-
 ```
 
 ```{python}
 print(daily_consumption * days)
-
 ```
 
 ```{python}
 import polars as pl
 days_pl = pl.DataFrame(days.reset_index())
 print(days_pl)
-
 ```
 
 ```{python}
 daily_consumption_pl = pl.DataFrame(daily_consumption.reset_index())
 print(daily_consumption_pl)
-
 ```
 
 ```{python}
@@ -4554,13 +4276,11 @@ print(daily_consumption_pl
  .with_columns([pl.col(name) * val 
            for i, (name, val) in enumerate(days_pl.iter_rows())])
 )
-
 ```
 
 ```{python}
 days_dict = days.to_dict()
 days_dict
-
 ```
 
 ```{python}
@@ -4568,7 +4288,6 @@ print(daily_consumption_pl
  .with_columns(pl.col(name) * val 
            for name, val in days_dict.items())
 )
-
 ```
 
 ## Leveraging AI
@@ -4623,7 +4342,6 @@ def get_price():
                [c.split('_')[-1] for c in df_.columns]))))
 )
 print(get_price())
-
 ```
 
 ```{python}
@@ -4780,7 +4498,6 @@ def get_port(price_df):
 
 port_pl = get_port(get_price())
 print(port_pl)
-
 ```
 
 ```{python}
@@ -4953,7 +4670,6 @@ print((update_price_df(get_price(), bm_ticker))
 .with_columns(rNet_Beta=(rLong_MV_Beta_pl.select('rLong_MV_Beta') 
           - rShort_MV_Beta_pl.select('rShort_MV_Beta')).to_series())
 )
-
 ```
 
 ```{python}
@@ -5404,7 +5120,6 @@ Long_MV_Beta = MV_Beta[MV_Beta >0].sum(axis=1) / Long_MV
 Short_MV_Beta = MV_Beta[MV_Beta <0].sum(axis=1)/ Short_MV
 price_df['Net_Beta'] = Long_MV_Beta - Short_MV_Beta
 price_df
-
 ```
 
 ```{python}
@@ -5468,7 +5183,6 @@ final_price = (price_pl
             Net_Beta=(Long_MV_Beta_pl['long'] - Short_MV_Beta_pl['short'])           
     )
 )
-
 ```
 
 ## Chapter Methods
@@ -5489,7 +5203,6 @@ P = (L *
    (c * (1 + c) ** n) / \
    ((1 + c) ** n - 1))
 P  # monthly payment 3_406.734
-
 ```
 
 ```{python}
@@ -5519,13 +5232,11 @@ def payment_schedule_gen(principal, number_of_payments,
 
 ```{python}
 print(pl.DataFrame(payment_schedule_gen(L, n, c, P)))
-
 ```
 
 ```{python}
 %%timeit
 pl.DataFrame(payment_schedule_gen(L, n, c, P))
-
 ```
 
 ## Use Numba
@@ -5566,7 +5277,6 @@ print(pl.DataFrame(payment_schedule_numba(L, n, c, P))
   .rename({'column_0': 'month', 'column_1': 'Principal', 
            'column_2': 'Interest', 'column_3': 'Remaining Balance', 
            'column_4': 'Monthly Payment'}))          
-
 ```
 
 ```{python}
@@ -5575,7 +5285,6 @@ print(pl.DataFrame(payment_schedule_numba(L, n, c, P))
   .rename({'column_0': 'month', 'column_1': 'Principal', 
            'column_2': 'Interest', 'column_3': 'Remaining Balance', 
            'column_4': 'Monthly Payment'}))
-
 ```
 
 ## Closed Form Solution
@@ -5600,7 +5309,6 @@ print(sched
  .with_columns(Interest=(pl.col('Remaining Balance') * c))
  .with_columns(Principal=(pl.col('Monthly Payment') - pl.col('Interest')))
 )
-
 ```
 
 ```{python}
@@ -5614,7 +5322,6 @@ print(sched
  .with_columns(Principal=
        (pl.col('Monthly Payment') - pl.col('Interest')))
 )
-
 ```
 
 ## Adding a PCA API to Polars
@@ -5657,7 +5364,6 @@ pcas = (pl.DataFrame(np.dot(centered, comps)) # 7
 
 ```{python}
 print(pcas)
-
 ```
 
 ```{python}
@@ -5666,7 +5372,6 @@ import sklearn
 sklearn.set_config(transform_output='polars')
 pca = PCA()
 print(pca.fit_transform(X))
-
 ```
 
 ## Scatter Plot of the Principal Components
@@ -5816,7 +5521,6 @@ fit = (X
 ```{python}
 print(fit.pca.explained_variance()
  .select(pl.all() / pl.all().sum()))
-
 ```
 
 ```{python}
@@ -5830,4 +5534,3 @@ fit.pca.component_plot()
 # Conclusion
 
 ## One Last Thing
-
